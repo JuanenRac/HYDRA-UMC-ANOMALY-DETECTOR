@@ -55,7 +55,7 @@ flowchart TB
 
 ## 📂 DIRECTORY STRUCTURE
 
-Pure-software service (ML/analytics) - no hardware/firmware/os of its own, pruned from the template (see `SONNET/_papelera/` for ecosystem convention).
+Pure-software service (ML/analytics) with no hardware, firmware or OS of its own; those folders are omitted by the repository structure policy.
 
 ```text
 HYDRA-UMC-ANOMALY-DETECTOR/
@@ -220,3 +220,14 @@ This project has no direct relation outside the Data & Analytics family (per the
 
 ## 📜 LICENSE
 GPL-3.0 - See LICENSE for details.
+
+## 🛠️ BUILD & RUN
+
+Use the non-versioning build check before a release build:
+
+| Action | Windows | Linux / macOS |
+|---|---|---|
+| Build check (no version or CHANGELOG change) | `build-test.bat` | `./build-test.sh` |
+| Run / development (when provided) | `run*.bat` or `dev*.bat` | `./run*.sh` or `./dev*.sh` |
+
+`build-test.bat` and `build-test.sh` compile or validate the project stack without incrementing `hydra-umc.project.json` or modifying `CHANGELOG.md`. They may create normal compiler output only. Existing `build*.bat`, `build*.sh`, `run*` and `dev*` scripts retain their project-specific, versioned or runtime behavior; use them when that behavior is required.
