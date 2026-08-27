@@ -71,6 +71,8 @@ HYDRA-UMC-ANOMALY-DETECTOR/
 │   ├── api.py                        # 封装 detector 的简单 JSON/HTTP 处理器
 │   └── main.py                       # 入口点：连接一切，启动 HTTP 服务器
 ├── tests/                   # pytest——FFT 正确性、baseline 统计、真实故障检测
+├── docs/
+│   └── API.md               # 真实的 HTTP 端点参考（请求、响应、状态码）
 ├── build/                   # 构建输出（已被 gitignore）
 ├── pyproject.toml           # 包元数据、版本、依赖项（numpy）
 ├── bump_version.py          # 里程表式版本递增（由构建运行）
@@ -79,10 +81,11 @@ HYDRA-UMC-ANOMALY-DETECTOR/
 └── README.md
 ```
 
-从原始模板中省略：`hardware/`、`firmware/`、`os/`、`docs/`、
+从原始模板中省略：`hardware/`、`firmware/`、`os/`、
 `images/` 和 `scripts/`——这是一个纯软件服务（Python 包），没有专属
-硬件或固件，没有需要维护的操作系统镜像，目前也还没有足够多的文档/
-媒体/实用脚本内容值得为它们单独建立文件夹。
+硬件或固件，没有需要维护的操作系统镜像，目前也还没有足够多的媒体/
+实用脚本内容值得为它们单独建立文件夹。完整的 HTTP 端点参考见
+[`docs/API.md`](docs/API.md)。
 
 ---
 

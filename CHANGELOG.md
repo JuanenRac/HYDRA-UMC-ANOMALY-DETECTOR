@@ -20,6 +20,15 @@ semantic-versioning judgment calls:
 
 ---
 
+## Documentation - Real HTTP API reference
+
+- **`docs/API.md`** (new) - every real endpoint (`POST /baseline/fit`,
+  `POST /detect`, `GET /stats`) documented from the actual handler code in
+  `api.py`: request/response bodies, status codes, and what the response
+  fields (`score`, `anomalous`, `worstBinFreqHz`) actually mean per
+  `detector.py`. Verified live against a real running server, not just
+  read from source. Documentation-only - no code changed, no version bump.
+
 ## [0.0.2] - Real FFT + statistical anomaly detection + HTTP API
 
 - **`src/hydra_umc_anomaly_detector/fft.py`** - real FFT-based spectrum

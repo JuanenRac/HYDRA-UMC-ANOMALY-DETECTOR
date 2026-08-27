@@ -74,6 +74,8 @@ HYDRA-UMC-ANOMALY-DETECTOR/
 │   ├── api.py                        # detector を包む単純な JSON/HTTP ハンドラー
 │   └── main.py                       # エントリポイント：すべてを接続し、HTTP サーバーを起動
 ├── tests/                   # pytest - FFT の正しさ、baseline の統計、実際の故障検知
+├── docs/
+│   └── API.md               # 本物の HTTP エンドポイントリファレンス（リクエスト、レスポンス、ステータスコード）
 ├── build/                   # ビルド出力（gitignore 対象）
 ├── pyproject.toml           # パッケージメタデータ、バージョン、依存関係(numpy)
 ├── bump_version.py          # オドメーター式バージョンインクリメント（ビルドが実行）
@@ -82,12 +84,12 @@ HYDRA-UMC-ANOMALY-DETECTOR/
 └── README.md
 ```
 
-元のテンプレートから省略：`hardware/`、`firmware/`、`os/`、`docs/`、
+元のテンプレートから省略：`hardware/`、`firmware/`、`os/`、
 `images/`、`scripts/` —— これは純粋なソフトウェアサービス(Python
 パッケージ)であり、専用のハードウェアやファームウェア、維持すべき
-オペレーティングシステムイメージもなく、専用フォルダを正当化する
-ほどのドキュメント/メディア/ユーティリティスクリプトの内容もまだ
-ありません。
+オペレーティングシステムイメージもなく、専用フォルダを正当化するほどの
+メディア/ユーティリティスクリプトの内容もまだありません。完全な HTTP
+エンドポイントリファレンスは [`docs/API.md`](docs/API.md) を参照。
 
 ---
 

@@ -67,6 +67,8 @@ HYDRA-UMC-ANOMALY-DETECTOR/
 │   ├── api.py                        # Handlers JSON/HTTP simples encapsulant le détecteur
 │   └── main.py                       # Point d'entrée : relie tout, démarre le serveur HTTP
 ├── tests/                   # pytest - correction de la FFT, statistiques du baseline, détection réelle de pannes
+├── docs/
+│   └── API.md               # Référence réelle des endpoints HTTP (requêtes, réponses, codes de statut)
 ├── build/                   # Sortie de build (ignorée par git)
 ├── pyproject.toml           # Métadonnées du paquet, version, dépendances (numpy)
 ├── bump_version.py          # Incrément de version type compteur kilométrique (exécuté par le build)
@@ -75,12 +77,12 @@ HYDRA-UMC-ANOMALY-DETECTOR/
 └── README.md
 ```
 
-Élagué du modèle original : `hardware/`, `firmware/`, `os/`, `docs/`,
+Élagué du modèle original : `hardware/`, `firmware/`, `os/`,
 `images/` et `scripts/` — il s'agit d'un service purement logiciel
 (paquet Python) sans matériel ni firmware propres, sans image de système
-d'exploitation à maintenir, et sans contenu de documentation/médias/
-scripts utilitaires encore suffisant pour justifier leurs propres
-dossiers.
+d'exploitation à maintenir, et sans contenu de médias/scripts utilitaires
+encore suffisant pour justifier leurs propres dossiers. Voir
+[`docs/API.md`](docs/API.md) pour la référence complète des endpoints HTTP.
 
 ---
 
