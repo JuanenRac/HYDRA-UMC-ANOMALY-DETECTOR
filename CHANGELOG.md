@@ -1,0 +1,81 @@
+# Changelog
+
+All notable work on **HYDRA-UMC-ANOMALY-DETECTOR** is summarized here, newest first. Full
+session-by-session detail (including dates) lives in a private,
+unpublished internal log - this file is public, so it intentionally
+omits calendar dates.
+
+## Versioning scheme
+
+`pyproject.toml`'s `version` field bumps automatically on every real
+build (`build.sh`/`.bat` - see `bump_version.py`, run as the first real
+step of both scripts).
+
+It follows the ecosystem-wide base-10 "odometer" rule rather than
+semantic-versioning judgment calls:
+
+- `PATCH` +1 on every build
+- when `PATCH` would exceed 9, it resets to 0 and `MINOR` +1 instead (e.g. `0.0.9` -> `0.1.0`, never `0.0.10`)
+- the same carry cascades into `MAJOR` if `MINOR` would exceed 9
+
+---
+
+## [0.0.2] - Real FFT + statistical anomaly detection + HTTP API
+
+- **`src/hydra_umc_anomaly_detector/fft.py`** - real FFT-based spectrum
+  computation (`numpy.fft.rfft`), DC bin genuinely dropped. Verified
+  against a known synthetic sine wave - the detected peak frequency
+  matches the signal's actual frequency, not just "runs without error".
+- **`src/hydra_umc_anomaly_detector/baseline.py`** - `fit_baseline()`
+  builds a real per-frequency-bin statistical profile (mean/std) from
+  known-healthy signal windows, with a `min_std` floor that prevents a
+  real division-by-zero when a bin happens to be constant across every
+  training window.
+- **`src/hydra_umc_anomaly_detector/detector.py`** - `AnomalyDetector`:
+  fits a `Baseline`, scores a live window by its worst (max) per-bin
+  z-score. Honest naming in the code's own docstring: this is real
+  classical signal-processing/statistics, not a trained neural network -
+  the README says "AI-driven"; what's actually running today is FFT +
+  z-score against a learned baseline. The default threshold (10.0) was
+  set from real empirical separation, not guessed - see the module's own
+  docstring for the numbers from this project's synthetic
+  healthy-vs-faulty test fixtures (an earlier default of 4.0 was found,
+  via the tests, to false-positive on genuinely healthy signals because
+  a max-over-~250-bins statistic combined with a modest training-set
+  size naturally runs higher than a single-bin "4 sigma" intuition
+  suggests).
+- **`src/hydra_umc_anomaly_detector/api.py`** - plain JSON/HTTP surface
+  (stdlib `http.server`): `POST /baseline/fit`, `POST /detect`,
+  `GET /stats`. Guards the shared `AnomalyDetector` with a real
+  `threading.Lock` (learned from the same cross-thread issue found and
+  fixed in HYDRA-UMC-DATALAKE's `TimeSeriesStore` this same session).
+- **`src/hydra_umc_anomaly_detector/main.py`** - now wires the detector
+  to the API and starts a real HTTP server, instead of only printing
+  identity and exiting.
+- Added `numpy` as the package's first real runtime dependency, and
+  `pytest` as a real dev dependency - `build.sh`/`build.bat` now install
+  both and run the real test suite as part of a normal build.
+- Verified for real: 19 `pytest` cases across fft/baseline/detector/api,
+  including the two that matter most for this project's actual promise -
+  a synthetic signal carrying a real extra harmonic (standing in for a
+  bearing-defect frequency) is flagged anomalous, a genuinely
+  healthy-looking signal is not, with a wide, empirically-measured
+  separation margin (healthy scores up to ~5.3, faulty scores in the
+  hundreds, at just 10 training windows). Additionally smoke-tested the
+  installed CLI entry point end-to-end: real `curl` requests fitting a
+  baseline then detecting both a healthy and a faulty signal, correctly
+  classified, with the faulty case's `worstBinFreqHz` landing within 1 Hz
+  of the actual injected fault frequency.
+- What's still not real, on purpose - see `mejoras_futuras.txt`: a
+  trained ML/deep-learning model (this is classical FFT + statistics, a
+  real foundation for one, not one itself), RUL (Remaining Useful Life)
+  estimation, and reading real telemetry from HYDRA-UMC-DATALAKE (this
+  detector takes signal windows directly via its API today, not a live
+  query against stored history).
+
+## [0.0.1] - Initial scaffolding
+
+- **`src/hydra_umc_anomaly_detector/main.py`** - minimal real entry point. No detection logic yet - statistical/ML-based anomaly detection over HYDRA-UMC-DATALAKE's own telemetry lands in a later pass.
+- **`pyproject.toml`** - packaging metadata, no runtime dependencies yet.
+- **`bump_version.py`** - ecosystem-standard odometer bump script.
+- **`build.sh` / `build.bat`**, **`run.sh` / `run.bat`** - venv creation, editable install, compile-check, and entry-point execution.

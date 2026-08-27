@@ -1,0 +1,23 @@
+{
+  "schema_version": "1.0",
+  "ecosystem": "HYDRA-UMC",
+  "name": "HYDRA-UMC-ANOMALY-DETECTOR",
+  "version": "0.0.2",
+  "role": "api",
+  "stack": "python",
+  "technologies": [
+    "Python",
+    "FFT",
+    "statistical baseline detection"
+  ],
+  "deployment_target": "cm5",
+  "maturity": "functional",
+  "family": "Data & Analytics",
+  "parent": "HYDRA-UMC-DATALAKE",
+  "build": "",
+  "notes": "Real FFT + statistical baseline anomaly detector, empirically threshold-tuned against real synthetic healthy/faulty signal separation.",
+  "native_version": {
+    "file": "pyproject.toml",
+    "pattern": "^version\\s*=\\s*\"(\\d+)\\.(\\d+)\\.(\\d+)\""
+  }
+}

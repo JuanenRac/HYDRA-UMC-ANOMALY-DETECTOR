@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hydra-umc-anomaly-detector"
+version = "0.0.2"
+description = "AI-driven predictive maintenance based on motor vibration signatures - FFT/spectrogram analysis of high-frequency telemetry to detect bearing wear, loose belts and cooling failures before they happen."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE.md" }
+authors = [
+    { name = "JuanenRac (Electro Hobby 3D)", email = "electrohobby3d@gmail.com" },
+]
+keywords = ["hydra-umc", "anomaly-detection", "predictive-maintenance", "fft", "vibration-analysis", "ai"]
+dependencies = ["numpy>=1.24"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[project.urls]
+Homepage = "https://github.com/JuanenRac/HYDRA-UMC-ANOMALY-DETECTOR"
+
+[project.scripts]
+hydra-umc-anomaly-detector = "hydra_umc_anomaly_detector.main:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
