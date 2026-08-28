@@ -27,6 +27,9 @@ Al monitorizar la "huella digital" de cada motor y cabezal de herramienta, puede
 * 📉 **Mantenimiento Predictivo:** Estimación RUL (Vida Útil Remanente) impulsada por IA para motores NEMA y herramientas URTC.
 * 🚨 **Sistema de Alerta Temprana:** Activa alertas en las interfaces Studio y Watch cuando surgen patrones anormales.
 * 🧬 **Modelos de Aprendizaje:** Mejora continuamente la precisión de detección aprendiendo de la historia del Datalake.
+* 🏷️ **Versionado de Modelo:** Cada `Verdict` lleva la versión de modelo real y monótona, y el umbral contra el que fue puntuado - un reajuste (refit) es un evento real y trazable. *(implementado)*
+* 📐 **Métricas de Precisión/Recall:** Precision/recall/F1 reales, calculados sobre un fixture etiquetado (`metrics.py`), no solo afirmaciones en prosa sobre la separación de puntuaciones. *(implementado)*
+* 📈 **Detección de Deriva Simulada:** `DriftMonitor` señala una elevación sostenida real de la media móvil, distinta de la propia marca de anomalía de cualquier ventana individual. *(implementado)*
 
 ---
 
@@ -50,6 +53,8 @@ flowchart TB
 * **Por qué FFT + una base estadística hoy, no una red neuronal entrenada todavía.** El README lo llama "impulsado por IA" - lo que es real y funciona en esta primera pasada es una técnica real de procesamiento de señales (`src/hydra_umc_anomaly_detector/fft.py`, FFT propio de numpy) más una base estadística por bin de frecuencia aprendida de ventanas conocidas como sanas (`baseline.py`) y un veredicto de max-z-score (`detector.py`) - no un modelo de deep learning entrenado. Funciona, está probado contra firmas de fallo sintéticas reales, y es la base correcta sobre la que construir un modelo aprendido más adelante (ver `mejoras_futuras.txt`) - pero llamarlo red neuronal aquí exageraría lo que realmente corre.
 * **Por qué un max-z-score en todos los bins, no un umbral fijo.** Un umbral fijo ('temperatura del motor > 80C') se pierde la deriva gradual y da falsas alarmas ante picos de carga legítimos - comparar cada bin del espectro EN VIVO contra la propia base sana APRENDIDA de este motor concreto detecta un pico de frecuencia nuevo/desplazado (una firma real de fallo de rodamiento) sin ninguno de esos dos fallos. El umbral por defecto (10.0) se eligió a partir de separación empírica real, no adivinado - ver el propio docstring de `detector.py` para las cifras reales de los fixtures de test sintéticos sano-vs-defectuoso de este proyecto.
 * **Cómo encaja en el resto del ecosistema.** Un servicio hermano bajo HYDRA-UMC-DATALAKE - ejecuta detección de anomalías sobre la telemetría que HYDRA-UMC-TELEMETRY-COLLECTOR ya escribió ahí.
+* **Por qué `DriftMonitor` es un mecanismo separado de `AnomalyDetector.score()`, y no un umbral más grande.** Responden preguntas reales distintas: "¿es ESTA ventana anómala?" (un veredicto puntual) frente a "¿se ha desplazado silenciosamente la media RECIENTE?" (una tendencia móvil, robusta ante una única ventana atípica ruidosa). Un test real de deriva simulada encontró y documenta honestamente que, para el diseño de max-z-score de este detector, la propia marca de una ventana individual en realidad se dispara *antes* que la señal de deriva móvil ante un fallo de tipo de frecuencia nuevo - el valor real de `DriftMonitor` aquí es una confirmación de tendencia sostenida, no una alerta más temprana, y el código lo dice así en vez de sobrevenderlo.
+* **Por qué `metrics.py` calcula precision/recall en lugar de dejar la calidad del umbral como prosa.** El propio docstring de `detector.py` antes solo afirmaba "sano puntuó hasta ~5.3, defectuoso puntuó en los cientos" - real, pero no una cifra contra la que un futuro reajuste pudiera hacer un test de regresión. `precision_recall()` sobre el mismo fixture real da a eso un valor real y verificable (1.0/1.0 hoy).
 
 ---
 
@@ -64,9 +69,11 @@ HYDRA-UMC-ANOMALY-DETECTOR/
 │   ├── fft.py                       # Espectro real basado en FFT (numpy)
 │   ├── baseline.py                  # Perfil estadistico sano por bin (media/std)
 │   ├── detector.py                  # Ajusta un Baseline, puntua ventanas en vivo contra el
+│   ├── metrics.py                   # Precision/recall/F1 reales sobre un fixture etiquetado
+│   ├── drift.py                     # Deteccion real de deriva por media movil
 │   ├── api.py                        # Handlers JSON/HTTP planos que envuelven el detector
 │   └── main.py                       # Punto de entrada: conecta todo, arranca el servidor HTTP
-├── tests/                   # pytest - correccion de FFT, estadistica del baseline, deteccion real de fallos
+├── tests/                   # pytest - correccion de FFT, estadistica del baseline, deteccion real de fallos, metricas, deriva simulada
 ├── docs/
 │   └── API.md               # Referencia real de endpoints HTTP (peticiones, respuestas, codigos de estado)
 ├── build/                   # Salida de build (ignorada por git)

@@ -17,6 +17,7 @@ from urllib.parse import urlparse
 
 from .baseline import BaselineError
 from .detector import AnomalyDetector, NotFittedError
+from .drift import DriftMonitor, DriftMonitorError
 
 
 def _read_json_body(handler: BaseHTTPRequestHandler) -> dict:
@@ -46,6 +47,10 @@ class Handler(BaseHTTPRequestHandler):
             self._handle_fit()
         elif path == "/detect":
             self._handle_detect()
+        elif path == "/drift/init":
+            self._handle_drift_init()
+        elif path == "/drift/observe":
+            self._handle_drift_observe()
         else:
             _write_json(self, 404, {"error": "not found"})
 
@@ -91,6 +96,55 @@ class Handler(BaseHTTPRequestHandler):
                 "score": verdict.score,
                 "anomalous": verdict.anomalous,
                 "worstBinFreqHz": verdict.worst_bin_freq,
+                "modelVersion": verdict.model_version,
+                "threshold": verdict.threshold,
+            },
+        )
+
+    def _handle_drift_init(self) -> None:
+        try:
+            body = _read_json_body(self)
+            baseline_scores = body["baselineScores"]
+            if not isinstance(baseline_scores, list) or not baseline_scores:
+                raise ValueError("\"baselineScores\" must be a non-empty array of numbers")
+            kwargs = {}
+            if "windowSize" in body:
+                kwargs["window_size"] = int(body["windowSize"])
+            if "driftRatioThreshold" in body:
+                kwargs["drift_ratio_threshold"] = float(body["driftRatioThreshold"])
+            monitor = DriftMonitor([float(s) for s in baseline_scores], **kwargs)
+        except (KeyError, ValueError, TypeError, json.JSONDecodeError, DriftMonitorError) as e:
+            _write_json(self, 400, {"error": f"invalid drift monitor request: {e}"})
+            return
+        with self.server.lock:
+            self.server.drift_monitor = monitor
+        _write_json(self, 200, {"status": "initialized", "baselineMeanScore": monitor.baseline_mean_score})
+
+    def _handle_drift_observe(self) -> None:
+        try:
+            body = _read_json_body(self)
+            score = float(body["score"])
+        except (KeyError, ValueError, TypeError, json.JSONDecodeError) as e:
+            _write_json(self, 400, {"error": f"invalid request: {e}"})
+            return
+        with self.server.lock:
+            monitor = self.server.drift_monitor
+            if monitor is None:
+                _write_json(self, 409, {"error": "drift monitor not initialized - call POST /drift/init first"})
+                return
+            report = monitor.observe(score)
+        if report is None:
+            _write_json(self, 200, {"status": "priming"})
+            return
+        _write_json(
+            self,
+            200,
+            {
+                "status": "ready",
+                "baselineMeanScore": report.baseline_mean_score,
+                "recentMeanScore": report.recent_mean_score,
+                "driftRatio": report.drift_ratio,
+                "drifted": report.drifted,
             },
         )
 
@@ -112,4 +166,5 @@ class DetectorServer(ThreadingHTTPServer):
     def __init__(self, address: tuple[str, int], detector: AnomalyDetector) -> None:
         super().__init__(address, Handler)
         self.detector = detector
+        self.drift_monitor: DriftMonitor | None = None
         self.lock = threading.Lock()

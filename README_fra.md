@@ -27,6 +27,9 @@ En surveillant l'« empreinte numérique » di chaque moteur et tête d'outil, i
 * 📉 **Maintenance prédictive :** Estimation de la RUL (Remaining Useful Life) pilotée par l'IA pour les moteurs NEMA et les outils URTC.
 * 🚨 **Système d'alerte précoce :** Déclenche des alertes dans les interfaces Studio et Watch lorsque des modèles anormaux apparaissent.
 * 🧬 **Modèles d'apprentissage :** Améliore continuellement la précision de la détection en apprenant de l'historique du Datalake.
+* 🏷️ **Versionnage du modèle :** Chaque `Verdict` porte la version de modèle réelle et monotone, ainsi que le seuil sur lequel il a été noté - un réajustement (refit) est un événement réel et traçable. *(implémenté)*
+* 📐 **Métriques précision/rappel :** Precision/recall/F1 réels, calculés sur un jeu de données étiqueté (`metrics.py`), pas seulement des affirmations en prose sur la séparation des scores. *(implémenté)*
+* 📈 **Détection de dérive simulée :** `DriftMonitor` signale une élévation soutenue réelle de la moyenne glissante, distincte du propre signal d'anomalie d'une seule fenêtre. *(implémenté)*
 
 ---
 
@@ -50,6 +53,8 @@ flowchart TB
 * **Pourquoi FFT + une base statistique aujourd'hui, pas encore un réseau de neurones entraîné.** Le README appelle cela « piloté par l'IA » - ce qui est réel et fonctionne dans cette première passe est une véritable technique de traitement du signal (`src/hydra_umc_anomaly_detector/fft.py`, la propre FFT de numpy) plus une base statistique par bin de fréquence apprise à partir de fenêtres connues comme saines (`baseline.py`) et un verdict de max-z-score (`detector.py`) - pas un modèle de deep learning entraîné. Cela fonctionne, c'est testé contre de vraies signatures de panne synthétiques, et c'est la bonne fondation sur laquelle construire un modèle appris plus tard (voir `mejoras_futuras.txt`) - mais l'appeler réseau de neurones ici exagérerait ce qui tourne réellement.
 * **Pourquoi un max-z-score sur tous les bins, pas un seuil fixe.** Un seuil fixe ('température moteur > 80C') rate la dérive graduelle et déclenche de fausses alarmes sur des pics de charge légitimes - comparer chaque bin du spectre EN DIRECT à la propre base saine APPRISE de ce moteur précis détecte un pic de fréquence nouveau/décalé (une véritable signature de défaut de roulement) sans aucun de ces deux modes d'échec. Le seuil par défaut (10.0) a été choisi à partir d'une séparation empirique réelle, pas deviné - voir le docstring propre de `detector.py` pour les chiffres réels des fixtures de test synthétiques sain-vs-défectueux de ce projet.
 * **Comment cela s'intègre dans le reste de l'écosystème.** Un service frère sous HYDRA-UMC-DATALAKE - exécute la détection d'anomalies sur la télémétrie que HYDRA-UMC-TELEMETRY-COLLECTOR y a déjà écrite.
+* **Pourquoi `DriftMonitor` est un mécanisme séparé de `AnomalyDetector.score()`, et non un seuil plus grand.** Ils répondent à des questions réelles différentes : « cette fenêtre-CI est-elle anormale » (un verdict ponctuel) contre « la moyenne RÉCENTE a-t-elle discrètement dérivé » (une tendance glissante, robuste face à une seule fenêtre aberrante bruitée). Un véritable test de dérive simulée a découvert et documente honnêtement que, pour la conception max-z-score de ce détecteur, le propre signal d'une seule fenêtre se déclenche en réalité *avant* le signal de dérive glissante pour un défaut d'un nouveau type de fréquence - la vraie valeur de `DriftMonitor` ici est une confirmation de tendance soutenue, pas une alerte plus précoce, et le code le dit ainsi plutôt que de survendre la chose.
+* **Pourquoi `metrics.py` calcule precision/recall plutôt que de laisser la qualité du seuil en prose.** Le docstring propre de `detector.py` n'affirmait auparavant que « sain noté jusqu'à ~5.3, défectueux noté dans les centaines » - réel, mais pas un chiffre contre lequel un futur réajustement pourrait faire un test de non-régression. `precision_recall()` sur le même jeu de données réel donne à cela une valeur réelle et vérifiable (1.0/1.0 aujourd'hui).
 
 ---
 
@@ -64,9 +69,11 @@ HYDRA-UMC-ANOMALY-DETECTOR/
 │   ├── fft.py                       # Spectre réel basé sur la FFT (numpy)
 │   ├── baseline.py                  # Profil statistique sain par bin (moyenne/écart-type)
 │   ├── detector.py                  # Ajuste un Baseline, note les fenêtres en direct contre lui
+│   ├── metrics.py                   # Precision/recall/F1 réels sur un jeu de données étiqueté
+│   ├── drift.py                     # Détection réelle de dérive par moyenne glissante
 │   ├── api.py                        # Handlers JSON/HTTP simples encapsulant le détecteur
 │   └── main.py                       # Point d'entrée : relie tout, démarre le serveur HTTP
-├── tests/                   # pytest - correction de la FFT, statistiques du baseline, détection réelle de pannes
+├── tests/                   # pytest - correction de la FFT, statistiques du baseline, détection réelle de pannes, métriques, dérive simulée
 ├── docs/
 │   └── API.md               # Référence réelle des endpoints HTTP (requêtes, réponses, codes de statut)
 ├── build/                   # Sortie de build (ignorée par git)

@@ -36,6 +36,8 @@ class Verdict:
     score: float
     anomalous: bool
     worst_bin_freq: float
+    model_version: int
+    threshold: float
 
 
 class AnomalyDetector:
@@ -62,13 +64,31 @@ class AnomalyDetector:
         self._sample_rate = sample_rate
         self._threshold = threshold
         self._baseline: Baseline | None = None
+        # 0 means "never fitted" (is_fitted is False) - real, monotonic
+        # versioning: every successful fit() is a real, distinct model a
+        # Verdict can be traced back to, so a caller can tell "this
+        # verdict came from the baseline fit before the motor was
+        # serviced" from "after".
+        self._model_version = 0
 
     def fit(self, healthy_windows: list[np.ndarray] | list[list[float]]) -> None:
         self._baseline = fit_baseline(healthy_windows, self._sample_rate)
+        self._model_version += 1
 
     @property
     def is_fitted(self) -> bool:
         return self._baseline is not None
+
+    @property
+    def model_version(self) -> int:
+        """The real, monotonic version of the currently-fitted baseline -
+        0 before the first real fit() call, incremented on every real
+        refit thereafter."""
+        return self._model_version
+
+    @property
+    def threshold(self) -> float:
+        return self._threshold
 
     def score(self, window: np.ndarray | list[float]) -> Verdict:
         """Scores one live signal window against the fitted baseline.
@@ -88,4 +108,6 @@ class AnomalyDetector:
             score=worst_score,
             anomalous=worst_score > self._threshold,
             worst_bin_freq=float(self._baseline.freqs[worst_idx]),
+            model_version=self._model_version,
+            threshold=self._threshold,
         )

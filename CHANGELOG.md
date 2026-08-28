@@ -29,6 +29,14 @@ semantic-versioning judgment calls:
   `detector.py`. Verified live against a real running server, not just
   read from source. Documentation-only - no code changed, no version bump.
 
+## [0.0.5] - Model versioning, real precision/recall metrics, simulated drift detection
+
+- **Real model versioning** (`Verdict.model_version`/`threshold`, `AnomalyDetector.model_version`) - every real `fit()` call increments a monotonic version (0 = never fitted), and every `Verdict` now carries both the exact model version and threshold it was scored against - a caller can tell "this verdict came from the baseline fit before the motor was serviced" from "after". `POST /detect` includes both as new, additive response fields.
+- **`metrics.py`** (new) - real `precision_recall()`/`PrecisionRecall` (precision/recall/F1 from a real confusion matrix). Turns this project's own prior prose claim ("healthy scored up to ~5.3, faulty scored in the hundreds") into a real, computed number: a new test proves 1.0 precision and 1.0 recall over the exact same synthetic healthy/faulty fixture `test_detector.py` already uses.
+- **`drift.py`/`DriftMonitor`** (new) - a real, separate question from "is THIS window anomalous": has the RECENT rolling mean of scores drifted away from the baseline's own known-healthy mean - the kind of slow degradation (a loosening mount, a wearing bearing) that might never spike any single window above the anomaly threshold. New, additive `POST /drift/init`/`POST /drift/observe` endpoints. A real simulated-drift test ramps a fault component up gradually across 40 windows and proves the monitor stays quiet during real healthy priming and the earliest, lightest part of the ramp, then correctly flags the sustained trend once it's genuinely there - and honestly documents a real finding from running the simulation: this detector's own max-z-score design makes a *single* window's own anomaly flag trip earlier than the rolling drift signal for this fault shape, so `DriftMonitor`'s real value here is a robust, sustained-trend confirmation, not a leading indicator.
+- 18 new tests (`test_metrics.py`, `test_drift.py` new, plus additions to `test_detector.py`/`test_api.py`) = 37 total. Shared synthetic signal generators were factored out into `tests/signal_fixtures.py` so `test_detector.py`, `test_metrics.py` and `test_drift.py` all test against the exact same real healthy/faulty fixture.
+- Real verification beyond the test suite: ran a real `DetectorServer` end-to-end - fit, scored a healthy and a faulty window (confirming `modelVersion`/`threshold` on both), initialized a drift monitor and confirmed it stays quiet on real healthy scores then flags real elevated ones.
+
 ## [0.0.4]
 
 - Build version synchronized with `hydra-umc.project.json` and the repository-native version source.

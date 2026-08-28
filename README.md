@@ -27,6 +27,9 @@ By monitoring the "digital fingerprint" of every motor and tool head, it can ide
 * 📉 **Predictive Maintenance:** AI-driven RUL (Remaining Useful Life) estimation for NEMA motors and URTC tools.
 * 🚨 **Early Warning System:** Triggers alerts in the Studio and Watch interfaces when abnormal patterns emerge.
 * 🧬 **Learning Models:** Continuously improves detection accuracy by learning from the Datalake's history.
+* 🏷️ **Model Versioning:** Every `Verdict` carries the real, monotonic model version and threshold it was scored against - a refit is a real, traceable event. *(implemented)*
+* 📐 **Precision/Recall Metrics:** Real, computed precision/recall/F1 over a labeled fixture (`metrics.py`), not just prose claims about score separation. *(implemented)*
+* 📈 **Simulated Drift Detection:** `DriftMonitor` flags a real, sustained rolling-mean elevation distinct from any single window's own anomaly flag. *(implemented)*
 
 ---
 
@@ -50,6 +53,8 @@ flowchart TB
 * **Why FFT + a statistical baseline today, not a trained neural network yet.** The README calls this "AI-driven" - what's real and shipping in this first pass is a legitimate, real signal-processing technique (`src/hydra_umc_anomaly_detector/fft.py`, numpy's own FFT) plus a per-frequency-bin statistical baseline learned from known-healthy windows (`baseline.py`) and a max-z-score verdict (`detector.py`) - not a trained deep-learning model. It works, it's tested against real synthetic fault signatures, and it's the right foundation a learned model gets built on top of later (see `mejoras_futuras.txt`) - but calling it a neural network here would overstate what's actually running.
 * **Why a max-z-score across every bin, not a fixed threshold.** A fixed threshold ('motor temp > 80C') misses gradual drift and false-alarms on legitimate load spikes - comparing the LIVE spectrum's every bin against this specific motor's OWN learned healthy baseline catches a new/shifted frequency peak (a real bearing-defect signature) without either failure mode. The default cutoff (10.0) was picked from real empirical separation, not guessed - see `detector.py`'s own docstring for the actual numbers from this project's synthetic healthy-vs-faulty test fixtures.
 * **How this fits the rest of the ecosystem.** A sibling service under HYDRA-UMC-DATALAKE - runs anomaly detection over the telemetry HYDRA-UMC-TELEMETRY-COLLECTOR already wrote there.
+* **Why `DriftMonitor` is a separate mechanism from `AnomalyDetector.score()`, not a bigger threshold.** They answer different real questions: "is THIS window anomalous" (a single-shot verdict) versus "has the RECENT average quietly shifted" (a rolling trend, robust to one noisy outlier window). A real simulated-drift test found and honestly documents that for this detector's max-z-score design, a single window's own flag actually trips *before* the rolling drift signal for a new-frequency-type fault - `DriftMonitor`'s real value here is a sustained-trend confirmation, not an earlier warning, and the code says so rather than overselling it.
+* **Why `metrics.py` computes precision/recall instead of leaving the threshold's quality as prose.** `detector.py`'s own docstring used to only claim "healthy scored up to ~5.3, faulty scored in the hundreds" - real, but not a number a future re-tuning could regress-test against. `precision_recall()` over the same real fixture gives that a real, checkable value (1.0/1.0 today).
 
 ---
 
@@ -64,9 +69,11 @@ HYDRA-UMC-ANOMALY-DETECTOR/
 │   ├── fft.py                       # Real FFT-based spectrum (numpy)
 │   ├── baseline.py                  # Per-bin healthy statistical profile (mean/std)
 │   ├── detector.py                  # Fits a Baseline, scores live windows against it
+│   ├── metrics.py                   # Real precision/recall/F1 over a labeled fixture
+│   ├── drift.py                     # Real rolling-mean drift detection
 │   ├── api.py                        # Plain JSON/HTTP handlers wrapping the detector
 │   └── main.py                       # Entry point: wires everything, starts the HTTP server
-├── tests/                   # pytest - FFT correctness, baseline stats, real fault detection
+├── tests/                   # pytest - FFT correctness, baseline stats, real fault detection, metrics, simulated drift
 ├── docs/
 │   └── API.md               # Real HTTP endpoint reference (requests, responses, status codes)
 ├── build/                   # Build output (gitignored)

@@ -103,3 +103,51 @@ def test_fit_rejects_mismatched_window_lengths(server_url: str) -> None:
     status, body = _post(f"{server_url}/baseline/fit", {"windows": [_sine(50.0), _sine(50.0)[:100]]})
     assert status == 400
     assert "error" in body
+
+
+def test_detect_response_carries_real_model_version_and_threshold(server_url: str) -> None:
+    windows = [_sine(50.0) for _ in range(5)]
+    _post(f"{server_url}/baseline/fit", {"windows": windows})
+
+    status, body = _post(f"{server_url}/detect", {"window": _sine(50.0)})
+
+    assert status == 200
+    assert body["modelVersion"] == 1
+    assert body["threshold"] == 4.0
+
+
+def test_drift_observe_before_init_is_409(server_url: str) -> None:
+    status, body = _post(f"{server_url}/drift/observe", {"score": 5.0})
+    assert status == 409
+    assert "error" in body
+
+
+def test_drift_init_rejects_empty_baseline(server_url: str) -> None:
+    status, body = _post(f"{server_url}/drift/init", {"baselineScores": []})
+    assert status == 400
+    assert "error" in body
+
+
+def test_drift_real_end_to_end_round_trip(server_url: str) -> None:
+    status, body = _post(
+        f"{server_url}/drift/init",
+        {"baselineScores": [5.0, 5.0, 5.0], "windowSize": 3, "driftRatioThreshold": 2.0},
+    )
+    assert status == 200
+    assert body["status"] == "initialized"
+    assert body["baselineMeanScore"] == 5.0
+
+    status, body = _post(f"{server_url}/drift/observe", {"score": 5.0})
+    assert status == 200
+    assert body["status"] == "priming"
+
+    _post(f"{server_url}/drift/observe", {"score": 5.0})
+    status, body = _post(f"{server_url}/drift/observe", {"score": 5.0})
+    assert status == 200
+    assert body["status"] == "ready"
+    assert body["drifted"] is False
+
+    for _ in range(3):
+        status, body = _post(f"{server_url}/drift/observe", {"score": 50.0})
+    assert body["drifted"] is True
+    assert body["driftRatio"] == pytest.approx(10.0)

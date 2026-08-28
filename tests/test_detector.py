@@ -16,26 +16,7 @@ import numpy as np
 import pytest
 
 from hydra_umc_anomaly_detector.detector import AnomalyDetector, NotFittedError
-
-SAMPLE_RATE = 1000.0
-N_SAMPLES = 500
-
-
-def _healthy_signal(rng: np.random.Generator) -> np.ndarray:
-    """A 50 Hz fundamental (e.g. a motor's rotation rate) plus small
-    random measurement noise - a real, if synthetic, stand-in for a
-    healthy motor's vibration signature."""
-    t = np.arange(N_SAMPLES) / SAMPLE_RATE
-    return np.sin(2 * np.pi * 50.0 * t) + 0.05 * rng.standard_normal(N_SAMPLES)
-
-
-def _faulty_signal(rng: np.random.Generator) -> np.ndarray:
-    """The same healthy signal PLUS a strong new component at 137 Hz -
-    standing in for a real bearing-defect frequency that would not be
-    present in a healthy unit."""
-    t = np.arange(N_SAMPLES) / SAMPLE_RATE
-    fault_component = 0.8 * np.sin(2 * np.pi * 137.0 * t)
-    return _healthy_signal(rng) + fault_component
+from signal_fixtures import SAMPLE_RATE, N_SAMPLES, faulty_signal as _faulty_signal, healthy_signal as _healthy_signal
 
 
 @pytest.fixture()
@@ -67,6 +48,30 @@ def test_faulty_signal_with_extra_harmonic_is_flagged(fitted_detector: AnomalyDe
     # The detector should point at (roughly) the actual fault frequency,
     # not just flag "something's wrong" - real diagnostic value.
     assert verdict.worst_bin_freq == pytest.approx(137.0, abs=5.0)
+
+
+def test_model_version_starts_at_zero_and_increments_on_each_real_fit() -> None:
+    rng = np.random.default_rng(42)
+    healthy_windows = [_healthy_signal(rng) for _ in range(10)]
+    detector = AnomalyDetector(sample_rate=SAMPLE_RATE)
+
+    assert detector.model_version == 0
+
+    detector.fit(healthy_windows)
+    assert detector.model_version == 1
+
+    detector.fit(healthy_windows)  # a real refit - e.g. after service
+    assert detector.model_version == 2
+
+
+def test_verdict_carries_the_real_model_version_and_threshold_it_was_scored_against(
+    fitted_detector: AnomalyDetector,
+) -> None:
+    rng = np.random.default_rng(999)
+    verdict = fitted_detector.score(_healthy_signal(rng))
+
+    assert verdict.model_version == fitted_detector.model_version == 1
+    assert verdict.threshold == fitted_detector.threshold == 10.0
 
 
 def test_threshold_is_configurable() -> None:
