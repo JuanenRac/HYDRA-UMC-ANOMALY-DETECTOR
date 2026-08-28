@@ -29,6 +29,14 @@ semantic-versioning judgment calls:
   `detector.py`. Verified live against a real running server, not just
   read from source. Documentation-only - no code changed, no version bump.
 
+## [0.0.4]
+
+- Build version synchronized with `hydra-umc.project.json` and the repository-native version source.
+
+## [0.0.3]
+
+- Build version synchronized with `hydra-umc.project.json` and the repository-native version source.
+
 ## [0.0.2] - Real FFT + statistical anomaly detection + HTTP API
 
 - **`src/hydra_umc_anomaly_detector/fft.py`** - real FFT-based spectrum
