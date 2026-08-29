@@ -66,7 +66,13 @@ class Handler(BaseHTTPRequestHandler):
         try:
             with self.server.lock:
                 self.server.detector.fit(windows)
-        except BaselineError as e:
+        except (BaselineError, ValueError) as e:
+            # BaselineError covers fit_baseline()'s own checks (too few
+            # windows, mismatched lengths); the plain ValueError alongside
+            # it is what compute_spectrum() raises for a bad window itself
+            # (too short, not 1-D, non-numeric) - both are real client
+            # input errors, not server faults, so both get the same clean
+            # 400 the outer parsing errors above already produce.
             _write_json(self, 400, {"error": str(e)})
             return
         _write_json(self, 200, {"status": "fitted", "windowCount": len(windows)})
@@ -86,7 +92,12 @@ class Handler(BaseHTTPRequestHandler):
         except NotFittedError as e:
             _write_json(self, 409, {"error": str(e)})
             return
-        except BaselineError as e:
+        except (BaselineError, ValueError) as e:
+            # Same reasoning as _handle_fit above: score() can raise
+            # BaselineError (bin-count mismatch against the fitted
+            # baseline) or a plain ValueError straight out of
+            # compute_spectrum() for a bad window - both are client
+            # input errors, so both become a clean 400.
             _write_json(self, 400, {"error": str(e)})
             return
         _write_json(

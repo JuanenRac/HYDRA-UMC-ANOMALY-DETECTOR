@@ -105,6 +105,49 @@ def test_fit_rejects_mismatched_window_lengths(server_url: str) -> None:
     assert "error" in body
 
 
+def test_fit_rejects_too_short_window_as_400_not_500(server_url: str) -> None:
+    # Real regression case: compute_spectrum() (called via fit_baseline())
+    # raises a plain ValueError for a window with fewer than 2 samples -
+    # that must come back as a clean 400, not crash the request thread.
+    status, body = _post(f"{server_url}/baseline/fit", {"windows": [[5], [5]]})
+    assert status == 400
+    assert "error" in body
+
+
+def test_fit_rejects_non_numeric_window_as_400_not_500(server_url: str) -> None:
+    # Real regression case: compute_spectrum()'s own np.asarray(..., dtype=
+    # float64) raises a plain ValueError for non-numeric values - also a
+    # clean 400, not a crash.
+    status, body = _post(f"{server_url}/baseline/fit", {"windows": [["a", "b"], ["c", "d"]]})
+    assert status == 400
+    assert "error" in body
+
+
+def test_detect_rejects_too_short_window_as_400_not_500(server_url: str) -> None:
+    # Real regression case: compute_spectrum() (called via score()) raises
+    # a plain ValueError for a window with fewer than 2 samples once the
+    # detector is fitted - that must come back as a clean 400, not crash
+    # the request thread.
+    windows = [_sine(50.0) for _ in range(5)]
+    _post(f"{server_url}/baseline/fit", {"windows": windows})
+
+    status, body = _post(f"{server_url}/detect", {"window": [5]})
+    assert status == 400
+    assert "error" in body
+
+
+def test_detect_rejects_non_numeric_window_as_400_not_500(server_url: str) -> None:
+    # Real regression case: compute_spectrum()'s own np.asarray(..., dtype=
+    # float64) raises a plain ValueError for non-numeric values - also a
+    # clean 400, not a crash.
+    windows = [_sine(50.0) for _ in range(5)]
+    _post(f"{server_url}/baseline/fit", {"windows": windows})
+
+    status, body = _post(f"{server_url}/detect", {"window": ["a", "b"]})
+    assert status == 400
+    assert "error" in body
+
+
 def test_detect_response_carries_real_model_version_and_threshold(server_url: str) -> None:
     windows = [_sine(50.0) for _ in range(5)]
     _post(f"{server_url}/baseline/fit", {"windows": windows})

@@ -29,6 +29,24 @@ semantic-versioning judgment calls:
   `detector.py`. Verified live against a real running server, not just
   read from source. Documentation-only - no code changed, no version bump.
 
+## [0.0.6] - Fixed a real unhandled-exception crash on malformed `/baseline/fit` and `/detect` requests
+
+- **`src/hydra_umc_anomaly_detector/api.py`** - found in a live ecosystem bug
+  audit: `_handle_fit()`'s and `_handle_detect()`'s inner `try`/`except`
+  around the actual `detector.fit()`/`detector.score()` calls only caught
+  `BaselineError` (plus `NotFittedError` in detect), but both real calls
+  route through `fft.compute_spectrum()`, which raises a plain `ValueError`
+  - not a `BaselineError` - for a window that is too short (fewer than 2
+  samples), not 1-D, or non-numeric. A client `POST` like
+  `{"window": [5]}` or `{"window": ["a", "b"]}` crashed the request thread
+  with an unhandled exception instead of getting a clean 400. Both inner
+  handlers now also catch `ValueError` and return the same clean 400 body
+  the outer request-parsing errors already produce.
+- 4 new regression tests in `tests/test_api.py` - real malformed HTTP
+  bodies (a too-short window, a non-numeric window) sent to both
+  `POST /baseline/fit` and `POST /detect`, asserting a clean 400 in every
+  case rather than a crash. Full suite: 41 passed, 0 failed.
+
 ## [0.0.5] - Model versioning, real precision/recall metrics, simulated drift detection
 
 - **Real model versioning** (`Verdict.model_version`/`threshold`, `AnomalyDetector.model_version`) - every real `fit()` call increments a monotonic version (0 = never fitted), and every `Verdict` now carries both the exact model version and threshold it was scored against - a caller can tell "this verdict came from the baseline fit before the motor was serviced" from "after". `POST /detect` includes both as new, additive response fields.
