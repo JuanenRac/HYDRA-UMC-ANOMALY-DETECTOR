@@ -29,6 +29,13 @@ semantic-versioning judgment calls:
   `detector.py`. Verified live against a real running server, not just
   read from source. Documentation-only - no code changed, no version bump.
 
+## [0.0.7] - Real ecosystem live-status opt-in
+
+- **`hydra-umc.project.json`** declares its real `service.port` (8097)
+  and `health_path` (`/stats`) - HYDRA-UMC-SERVER's ecosystem status
+  endpoint now does a real HTTP GET against it (expecting 2xx) instead
+  of only reporting static manifest metadata.
+
 ## [0.0.6] - Fixed a real unhandled-exception crash on malformed `/baseline/fit` and `/detect` requests
 
 - **`src/hydra_umc_anomaly_detector/api.py`** - found in a live ecosystem bug

@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "ecosystem": "HYDRA-UMC",
   "name": "HYDRA-UMC-ANOMALY-DETECTOR",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "role": "api",
   "stack": "python",
   "technologies": [
@@ -19,5 +19,9 @@
   "native_version": {
     "file": "pyproject.toml",
     "pattern": "^version\\s*=\\s*\"(\\d+)\\.(\\d+)\\.(\\d+)\""
+  },
+  "service": {
+    "port": 8097,
+    "health_path": "/stats"
   }
 }
