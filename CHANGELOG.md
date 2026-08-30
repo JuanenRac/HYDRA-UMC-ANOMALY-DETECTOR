@@ -20,6 +20,15 @@ semantic-versioning judgment calls:
 
 ---
 
+## Unreleased - bounded HTTP input
+
+- Limits every JSON API request to 1 MiB and rejects negative, malformed or
+  oversized `Content-Length` values before reading/parsing a request body.
+  This prevents an accidental or hostile client from requesting an unbounded
+  read on the detector service.
+
+---
+
 ## Documentation - Real HTTP API reference
 
 - **`docs/API.md`** (new) - every real endpoint (`POST /baseline/fit`,

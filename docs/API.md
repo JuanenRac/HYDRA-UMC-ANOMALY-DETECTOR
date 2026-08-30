@@ -16,6 +16,9 @@ hydra-umc-anomaly-detector --addr 0.0.0.0 --port 8097
 
 All responses are `application/json`. There is no authentication - this is an internal, same-host/same-network service, not exposed publicly.
 
+Every JSON request body is limited to 1 MiB. Missing, negative, malformed or
+oversized `Content-Length` values are rejected with `400` before JSON parsing.
+
 ---
 
 ## `POST /baseline/fit`

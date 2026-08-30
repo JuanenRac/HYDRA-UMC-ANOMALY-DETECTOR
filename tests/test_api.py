@@ -16,7 +16,7 @@ from collections.abc import Iterator
 import numpy as np
 import pytest
 
-from hydra_umc_anomaly_detector.api import DetectorServer
+from hydra_umc_anomaly_detector.api import MAX_BODY_BYTES, DetectorServer
 from hydra_umc_anomaly_detector.detector import AnomalyDetector
 
 SAMPLE_RATE = 1000.0
@@ -169,6 +169,20 @@ def test_drift_init_rejects_empty_baseline(server_url: str) -> None:
     status, body = _post(f"{server_url}/drift/init", {"baselineScores": []})
     assert status == 400
     assert "error" in body
+
+
+def test_oversized_json_request_is_rejected_before_parsing(server_url: str) -> None:
+    raw = b"{" + b"x" * MAX_BODY_BYTES
+    request = urllib.request.Request(
+        f"{server_url}/detect",
+        data=raw,
+        method="POST",
+        headers={"Content-Type": "application/json"},
+    )
+    with pytest.raises(urllib.error.HTTPError) as error:
+        urllib.request.urlopen(request)
+    assert error.value.code == 400
+    assert "1048576" in json.loads(error.value.read())["error"]
 
 
 def test_drift_real_end_to_end_round_trip(server_url: str) -> None:

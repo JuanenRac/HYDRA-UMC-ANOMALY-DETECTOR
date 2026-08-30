@@ -20,8 +20,16 @@ from .detector import AnomalyDetector, NotFittedError
 from .drift import DriftMonitor, DriftMonitorError
 
 
+MAX_BODY_BYTES = 1024 * 1024
+
+
 def _read_json_body(handler: BaseHTTPRequestHandler) -> dict:
-    length = int(handler.headers.get("Content-Length", 0))
+    try:
+        length = int(handler.headers.get("Content-Length", 0))
+    except ValueError as error:
+        raise ValueError("Content-Length must be an integer") from error
+    if length < 0 or length > MAX_BODY_BYTES:
+        raise ValueError(f"request body must contain 0-{MAX_BODY_BYTES} bytes")
     raw = handler.rfile.read(length) if length else b"{}"
     return json.loads(raw)
 
