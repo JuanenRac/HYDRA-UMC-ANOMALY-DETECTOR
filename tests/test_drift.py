@@ -34,6 +34,40 @@ def test_drift_monitor_rejects_a_threshold_at_or_below_one() -> None:
         DriftMonitor([1.0, 2.0], drift_ratio_threshold=1.0)
 
 
+def test_drift_monitor_rejects_a_non_finite_baseline_score() -> None:
+    # NaN/Infinity compare False against everything, including "<= 0" -
+    # a poisoned baseline would otherwise sail past the positive-mean
+    # guard and leave every future ratio permanently NaN (drift detection
+    # silently, permanently disabled). json.loads accepts NaN/Infinity by
+    # default, so this is reachable straight from the HTTP API, not just
+    # a theoretical caller.
+    with pytest.raises(DriftMonitorError):
+        DriftMonitor([1.0, float("nan")])
+    with pytest.raises(DriftMonitorError):
+        DriftMonitor([1.0, float("inf")])
+
+
+def test_drift_monitor_rejects_a_non_finite_threshold() -> None:
+    with pytest.raises(DriftMonitorError):
+        DriftMonitor([1.0, 2.0], drift_ratio_threshold=float("nan"))
+
+
+def test_observe_rejects_a_non_finite_score() -> None:
+    # A single bad score must never be allowed to poison the rolling
+    # window - it would mask real drift for up to window_size future
+    # observations rather than failing loudly on the one bad sample.
+    monitor = DriftMonitor([1.0, 2.0], window_size=3)
+    with pytest.raises(DriftMonitorError):
+        monitor.observe(float("nan"))
+    with pytest.raises(DriftMonitorError):
+        monitor.observe(float("-inf"))
+    # And the window must still be untouched - the reports below prove
+    # observe() didn't already push a NaN before raising.
+    assert monitor.observe(1.0) is None
+    assert monitor.observe(1.0) is None
+    assert monitor.observe(1.0) is not None
+
+
 def test_observe_returns_none_until_the_window_fills() -> None:
     monitor = DriftMonitor([1.0, 2.0, 3.0], window_size=3)
     assert monitor.observe(1.0) is None

@@ -148,6 +148,22 @@ def test_detect_rejects_non_numeric_window_as_400_not_500(server_url: str) -> No
     assert "error" in body
 
 
+def test_detect_rejects_a_non_finite_window_sample_as_400_not_500(server_url: str) -> None:
+    # Real end-to-end regression: json.dumps/json.loads both accept the
+    # non-standard NaN token by default on this stdlib round-trip, so a
+    # real client CAN put one on the wire without ever hitting a JSON
+    # encode/decode error - only compute_spectrum()'s own explicit finite
+    # check (exercised here through the real HTTP surface, not just the
+    # unit test in test_fft.py) stands between that and a silently
+    # corrupted verdict.
+    windows = [_sine(50.0) for _ in range(5)]
+    _post(f"{server_url}/baseline/fit", {"windows": windows})
+
+    status, body = _post(f"{server_url}/detect", {"window": [1.0, float("nan"), 3.0]})
+    assert status == 400
+    assert "error" in body
+
+
 def test_detect_response_carries_real_model_version_and_threshold(server_url: str) -> None:
     windows = [_sine(50.0) for _ in range(5)]
     _post(f"{server_url}/baseline/fit", {"windows": windows})
@@ -167,6 +183,19 @@ def test_drift_observe_before_init_is_409(server_url: str) -> None:
 
 def test_drift_init_rejects_empty_baseline(server_url: str) -> None:
     status, body = _post(f"{server_url}/drift/init", {"baselineScores": []})
+    assert status == 400
+    assert "error" in body
+
+
+def test_drift_init_rejects_a_non_finite_baseline_score(server_url: str) -> None:
+    status, body = _post(f"{server_url}/drift/init", {"baselineScores": [1.0, float("nan")]})
+    assert status == 400
+    assert "error" in body
+
+
+def test_drift_observe_rejects_a_non_finite_score(server_url: str) -> None:
+    _post(f"{server_url}/drift/init", {"baselineScores": [5.0, 5.0, 5.0], "windowSize": 3})
+    status, body = _post(f"{server_url}/drift/observe", {"score": float("inf")})
     assert status == 400
     assert "error" in body
 

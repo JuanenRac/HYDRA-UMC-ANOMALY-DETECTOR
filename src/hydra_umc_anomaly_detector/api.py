@@ -151,7 +151,15 @@ class Handler(BaseHTTPRequestHandler):
             if monitor is None:
                 _write_json(self, 409, {"error": "drift monitor not initialized - call POST /drift/init first"})
                 return
-            report = monitor.observe(score)
+            try:
+                report = monitor.observe(score)
+            except DriftMonitorError as e:
+                # observe() didn't used to raise (any float, including
+                # NaN/Infinity, was silently accepted) - now that it
+                # rejects a non-finite score, this needs its own real
+                # 400, not an uncaught exception in the request thread.
+                _write_json(self, 400, {"error": f"invalid request: {e}"})
+                return
         if report is None:
             _write_json(self, 200, {"status": "priming"})
             return

@@ -55,6 +55,16 @@ def compute_spectrum(signal: np.ndarray | list[float], sample_rate: float) -> Sp
         raise ValueError("signal must have at least 2 samples")
     if sample_rate <= 0:
         raise ValueError("sample_rate must be positive")
+    # json.loads accepts the non-standard NaN/Infinity/-Infinity tokens by
+    # default - a client (or a replayed/corrupted telemetry sample) can
+    # smuggle a non-finite reading straight into "window" without json
+    # ever raising. rfft propagates a single NaN into the WHOLE spectrum
+    # (every bin, not just one), so score()'s worst_score/anomalous verdict
+    # would silently come back False (any comparison against NaN is
+    # False) - the exact fail-open this project's own AnomalyDetector
+    # exists to avoid. Reject before the FFT ever runs.
+    if not np.isfinite(signal).all():
+        raise ValueError("signal must contain only finite numbers (no NaN/Infinity)")
 
     spectrum = np.fft.rfft(signal)
     freqs = np.fft.rfftfreq(len(signal), d=1.0 / sample_rate)

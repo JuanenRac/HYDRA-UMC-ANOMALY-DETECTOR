@@ -49,6 +49,19 @@ def test_compute_spectrum_rejects_non_positive_sample_rate() -> None:
         compute_spectrum([1.0, 2.0, 3.0], sample_rate=0.0)
 
 
+def test_compute_spectrum_rejects_a_non_finite_sample() -> None:
+    # json.loads accepts the non-standard NaN/Infinity/-Infinity tokens
+    # by default, so a client (or a corrupted telemetry replay) can put
+    # one straight into the "window" the HTTP API hands to score(). A
+    # single NaN sample propagates into EVERY bin of rfft's output, and
+    # every downstream comparison against a NaN score is False - the
+    # detector would silently report "not anomalous" instead of failing.
+    with pytest.raises(ValueError):
+        compute_spectrum([1.0, float("nan"), 3.0], sample_rate=1000.0)
+    with pytest.raises(ValueError):
+        compute_spectrum([1.0, float("inf"), 3.0], sample_rate=1000.0)
+
+
 def test_peak_frequency_on_empty_spectrum_raises() -> None:
     # Exercises Spectrum.peak_frequency()'s own guard directly - every
     # signal length compute_spectrum() actually accepts (>=2 samples)

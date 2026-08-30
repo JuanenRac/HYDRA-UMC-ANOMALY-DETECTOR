@@ -13,6 +13,7 @@ separate, additive mechanism that would still catch that.
 """
 from __future__ import annotations
 
+import math
 from collections import deque
 from dataclasses import dataclass
 
@@ -46,15 +47,24 @@ class DriftMonitor:
             raise DriftMonitorError(
                 f"need at least 2 baseline scores to establish a reference, got {len(baseline_scores)}"
             )
+        # NaN/Infinity compare False against every real number (NaN <= 0
+        # is False, so is NaN > 0), so a poisoned baseline would sail
+        # straight past the "must be positive" guard below and leave
+        # every future observe() computing ratio = recent_mean / NaN -
+        # permanently NaN, which then compares False against the drift
+        # threshold forever: drift detection silently, permanently
+        # disabled by a single bad sample. Reject at construction instead.
+        if not all(math.isfinite(s) for s in baseline_scores):
+            raise DriftMonitorError("baseline_scores must all be finite numbers (no NaN/Infinity)")
         self._baseline_mean = sum(baseline_scores) / len(baseline_scores)
         if self._baseline_mean <= 0:
             raise DriftMonitorError(f"baseline mean score must be positive, got {self._baseline_mean}")
         if window_size < 1:
             raise DriftMonitorError(f"window_size must be positive, got {window_size}")
-        if drift_ratio_threshold <= 1.0:
+        if not math.isfinite(drift_ratio_threshold) or drift_ratio_threshold <= 1.0:
             raise DriftMonitorError(
-                f"drift_ratio_threshold must be > 1.0 (a rolling mean at or below the "
-                f"real baseline is never drift), got {drift_ratio_threshold}"
+                f"drift_ratio_threshold must be a finite number > 1.0 (a rolling mean at or below "
+                f"the real baseline is never drift), got {drift_ratio_threshold}"
             )
         self._window_size = window_size
         self._drift_ratio_threshold = drift_ratio_threshold
@@ -72,6 +82,12 @@ class DriftMonitor:
         `None` before enough recent data exists - an honest "not enough
         evidence yet", never a premature verdict from a half-full window.
         """
+        if not math.isfinite(score):
+            # Same fail-open risk as the constructor guard above, but
+            # worse here: one bad `score` poisons the rolling window and
+            # the resulting NaN mean/ratio would mask real drift for up
+            # to `window_size` future observations, not just one.
+            raise DriftMonitorError(f"score must be a finite number (no NaN/Infinity), got {score}")
         self._recent.append(score)
         if len(self._recent) < self._window_size:
             return None

@@ -38,6 +38,35 @@ semantic-versioning judgment calls:
   `detector.py`. Verified live against a real running server, not just
   read from source. Documentation-only - no code changed, no version bump.
 
+## [0.0.9] - Reject non-finite scores and window samples before they poison a verdict
+
+- **`fft.py`'s `compute_spectrum()`** now rejects a window containing NaN
+  or Infinity before running the FFT. Python's `json.loads` accepts the
+  non-standard `NaN`/`Infinity`/`-Infinity` tokens by default, so a
+  client (or a corrupted telemetry replay) could put one straight into
+  `POST /detect`'s `"window"` without ever hitting a JSON parse error.
+  A single non-finite sample propagates into *every* bin of `rfft`'s
+  output, and any comparison against a NaN score is `False` - the
+  detector would have silently reported "not anomalous" instead of
+  failing.
+- **`drift.py`'s `DriftMonitor`** now rejects a non-finite baseline
+  score, a non-finite `drift_ratio_threshold`, and a non-finite `score`
+  passed to `observe()`. NaN/Infinity compare `False` against everything
+  (including `<= 0`), so a poisoned baseline previously sailed straight
+  past the "must be positive" guard and left every future
+  `recent_mean / baseline_mean` permanently NaN - drift detection
+  silently, permanently disabled by one bad sample rather than failing
+  loudly on it.
+- **`api.py`'s `_handle_drift_observe`** now catches the `DriftMonitorError`
+  `observe()` can raise (it never used to raise at all) and returns a
+  clean `400`, instead of the exception reaching an uncaught state in the
+  request-handling thread.
+- Verified with 6 new tests across `test_fft.py`, `test_drift.py` and a
+  real end-to-end `test_api.py` round-trip (`json.dumps`/`json.loads`
+  both pass the `NaN`/`Infinity` tokens through on this stdlib pairing,
+  so the API-level tests exercise the actual wire behavior, not a
+  simulation of it) - `pytest` (55 passed) and `tools/ci_validate.py`.
+
 ## [0.0.8] - Fixed a real version-mirror drift
 
 - **`src/hydra_umc_anomaly_detector/__init__.py`**'s `__version__` had
