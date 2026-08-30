@@ -29,6 +29,17 @@ semantic-versioning judgment calls:
   `detector.py`. Verified live against a real running server, not just
   read from source. Documentation-only - no code changed, no version bump.
 
+## [0.0.8] - Fixed a real version-mirror drift
+
+- **`src/hydra_umc_anomaly_detector/__init__.py`**'s `__version__` had
+  fallen one real build behind `pyproject.toml`/the manifest - a
+  packaging tool that reads only `bump_manifest_version.py`'s own
+  `native_version.file` (pyproject.toml) without also running this
+  repo's separate `bump_version.py` (the one that keeps `__init__.py`
+  mirrored) leaves the two drifting apart, exactly what happened here.
+  Fixed via the real, intended sequence (`bump_version.py` then
+  `bump_manifest_version.py --sync`), not a manual edit.
+
 ## [0.0.7] - Real ecosystem live-status opt-in
 
 - **`hydra-umc.project.json`** declares its real `service.port` (8097)
