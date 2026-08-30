@@ -14,7 +14,7 @@
   "maturity": "established",
   "family": "Data & Analytics",
   "parent": "HYDRA-UMC-DATALAKE",
-  "build": "",
+  "build": "python tools/build_test.py",
   "notes": "Real FFT + statistical baseline anomaly detector, empirically threshold-tuned against real synthetic healthy/faulty signal separation. Real model versioning (every Verdict carries the model_version/threshold it was scored against), real precision/recall metrics over the labeled synthetic fixture (metrics.py), and simulated drift detection (drift.py's DriftMonitor) for a sustained score-elevation trend distinct from any single window's own anomaly flag.",
   "native_version": {
     "file": "pyproject.toml",
