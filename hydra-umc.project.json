@@ -22,6 +22,7 @@
   },
   "service": {
     "port": 8097,
-    "health_path": "/stats"
+    "health_path": "/stats",
+    "systemd_unit": "hydra-umc-anomaly-detector.service"
   }
 }
