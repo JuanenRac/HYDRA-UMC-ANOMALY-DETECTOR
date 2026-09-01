@@ -163,7 +163,9 @@ This project is part of a larger robotics ecosystem by the same author (JuanenRa
 
 ### Directly Related (outside the family)
 
-This project has no direct relation outside the Data & Analytics family (per the ecosystem's own relationship map) - see "Rest of the Ecosystem" below for everything else.
+- **[HYDRA-UMC-STUDIO](https://github.com/JuanenRac/HYDRA-UMC-STUDIO)** — surfaces this detector's real early-warning alerts directly in the control UI, per Key Features above.
+- **[HYDRA-UMC-WATCH](https://github.com/JuanenRac/HYDRA-UMC-WATCH)** — same alert surface, for whoever is watching fleet health rather than driving a robot.
+- **[URTC](https://github.com/JuanenRac/URTC)** — RUL estimation covers URTC tool heads, not just the NEMA motors in the arms themselves.
 
 ### Rest of the Ecosystem
 
