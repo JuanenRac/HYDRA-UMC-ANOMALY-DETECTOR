@@ -164,8 +164,9 @@ python -m pytest tests/ -v   # fft.py（正确找到已知正弦波的峰值频�
 
 ### 直接相关（项目族之外）
 
-本项目在 数据与分析 系列之外没有直接关联的项目（根据生态系统自身
-的关系图谱）——其余所有内容请见下方"生态系统的其余部分"。
+- **[HYDRA-UMC-STUDIO](https://github.com/JuanenRac/HYDRA-UMC-STUDIO)** —— 按照上方"关键特性"所述,将本检测器真实的早期预警提示直接呈现在控制界面中。
+- **[HYDRA-UMC-WATCH](https://github.com/JuanenRac/HYDRA-UMC-WATCH)** —— 相同的提示界面,面向监控车队健康状况而非驾驶机器人的人员。
+- **[URTC](https://github.com/JuanenRac/URTC)** —— RUL 估计涵盖 URTC 工具头,而不仅仅是机械臂自身的 NEMA 电机。
 
 ### 生态系统的其余部分
 

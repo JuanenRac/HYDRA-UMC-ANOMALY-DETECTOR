@@ -172,9 +172,9 @@ python -m pytest tests/ -v   # fft.py(既知の正弦波のピーク周波数が
 
 ### 直接関連（ファミリー外）
 
-本プロジェクトは、データと分析 ファミリー外に直接関連するプロジェ
-クトを持ちません（エコシステム自身の関係図に基づく）——その他すべて
-は下記の「エコシステムのその他のプロジェクト」を参照してください。
+- **[HYDRA-UMC-STUDIO](https://github.com/JuanenRac/HYDRA-UMC-STUDIO)** —— 本検知器の実際の早期警告アラートを、上記の主な機能に記載の通り、制御UIに直接表示します。
+- **[HYDRA-UMC-WATCH](https://github.com/JuanenRac/HYDRA-UMC-WATCH)** —— ロボットを操縦する人ではなく、フリートの健全性を監視する人向けに、同じアラート表示を提供します。
+- **[URTC](https://github.com/JuanenRac/URTC)** —— RUL推定は、アーム自体のNEMAモーターだけでなく、URTCツールヘッドもカバーします。
 
 ### エコシステムのその他のプロジェクト
 

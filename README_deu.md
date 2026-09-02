@@ -164,7 +164,9 @@ Dieses Projekt ist Teil eines größeren Robotik-Ökosystems desselben Autors (J
 
 ### Direkte Beziehung (außerhalb der Familie)
 
-Dieses Projekt hat keine direkte Beziehung außerhalb der Daten & Analytik-Familie (laut der eigenen Beziehungskarte des Ökosystems) - siehe "Restliches Ökosystem" unten für alles andere.
+- **[HYDRA-UMC-STUDIO](https://github.com/JuanenRac/HYDRA-UMC-STUDIO)** — zeigt die echten Frühwarnalarme dieses Detektors direkt in der Steuerungs-UI an, gemäß den oben genannten Hauptmerkmalen.
+- **[HYDRA-UMC-WATCH](https://github.com/JuanenRac/HYDRA-UMC-WATCH)** — dieselbe Alarmoberfläche, für alle, die den Flottenzustand überwachen, statt einen Roboter zu steuern.
+- **[URTC](https://github.com/JuanenRac/URTC)** — die RUL-Schätzung deckt URTC-Werkzeugköpfe ab, nicht nur die NEMA-Motoren der Arme selbst.
 
 ### Restliches Ökosystem
 
