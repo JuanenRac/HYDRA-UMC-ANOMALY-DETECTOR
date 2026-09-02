@@ -76,20 +76,26 @@ HYDRA-UMC-ANOMALY-DETECTOR/
 ├── tests/                   # pytest - FFT correctness, baseline stats, real fault detection, metrics, simulated drift
 ├── docs/
 │   └── API.md               # Real HTTP endpoint reference (requests, responses, status codes)
+├── images/                  # Media and diagrams
+├── systemd/
+│   └── hydra-umc-anomaly-detector.service # Local CM5 anomaly-detection API systemd unit
+├── tools/
+│   ├── build_test.py        # Build/compile check without bumping version
+│   └── ci_validate.py       # Manifest/CHANGELOG/docs validation used by CI
 ├── build/                   # Build output (gitignored)
 ├── pyproject.toml           # Package metadata, version, dependencies (numpy)
 ├── bump_version.py          # Odometer-style version bump (run by build)
+├── bump_manifest_version.py # Syncs hydra-umc.project.json's version to the native one (--sync)
 ├── build.sh / build.bat     # Real build: venv + editable install + bump + tests
 ├── run.sh / run.bat         # Real run: starts the HTTP API
 └── README.md
 ```
 
-Pruned from the original template: `hardware/`, `firmware/`, `os/`,
-`images/` and `scripts/` — this is a pure software service (Python
-package) with no dedicated hardware or firmware of its own, no operating
-system image to maintain, and no media/utility-script content substantial
-enough yet to warrant their own folders. See [`docs/API.md`](docs/API.md)
-for the full HTTP endpoint reference.
+Pruned from the original template: `hardware/`, `firmware/` and `os/` —
+this is a pure software service (Python package) with no dedicated
+hardware or firmware of its own and no operating system image to
+maintain. See [`docs/API.md`](docs/API.md) for the full HTTP endpoint
+reference.
 
 ---
 
