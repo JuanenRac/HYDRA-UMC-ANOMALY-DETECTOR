@@ -50,7 +50,7 @@ flowchart TB
 ## 3. 🧱 ARQUITECTURA Y DECISIONES DE DISEÑO
 
 * **Por qué es hermano, no un submódulo, de HYDRA-UMC-DATALAKE.** La detección de anomalías es una carga de trabajo analítica de solo lectura sobre telemetría ya almacenada - mantenerla separada significa que un fallo del detector o una inferencia de modelo lenta nunca bloquean las propias escrituras de HYDRA-UMC-TELEMETRY-COLLECTOR en el mismo almacén.
-* **Por qué FFT + una base estadística hoy, no una red neuronal entrenada todavía.** El README lo llama "impulsado por IA" - lo que es real y funciona en esta primera pasada es una técnica real de procesamiento de señales (`src/hydra_umc_anomaly_detector/fft.py`, FFT propio de numpy) más una base estadística por bin de frecuencia aprendida de ventanas conocidas como sanas (`baseline.py`) y un veredicto de max-z-score (`detector.py`) - no un modelo de deep learning entrenado. Funciona, está probado contra firmas de fallo sintéticas reales, y es la base correcta sobre la que construir un modelo aprendido más adelante (ver `mejoras_futuras.txt`) - pero llamarlo red neuronal aquí exageraría lo que realmente corre.
+* **Por qué FFT + una base estadística hoy, no una red neuronal entrenada todavía.** El README lo llama "impulsado por IA" - lo que es real y funciona en esta primera pasada es una técnica real de procesamiento de señales (`src/hydra_umc_anomaly_detector/fft.py`, FFT propio de numpy) más una base estadística por bin de frecuencia aprendida de ventanas conocidas como sanas (`baseline.py`) y un veredicto de max-z-score (`detector.py`) - no un modelo de deep learning entrenado. Funciona, está probado contra firmas de fallo sintéticas reales, y es la base correcta sobre la que construir un modelo aprendido más adelante (ver la sección de HOJA DE RUTA más abajo) - pero llamarlo red neuronal aquí exageraría lo que realmente corre.
 * **Por qué un max-z-score en todos los bins, no un umbral fijo.** Un umbral fijo ('temperatura del motor > 80C') se pierde la deriva gradual y da falsas alarmas ante picos de carga legítimos - comparar cada bin del espectro EN VIVO contra la propia base sana APRENDIDA de este motor concreto detecta un pico de frecuencia nuevo/desplazado (una firma real de fallo de rodamiento) sin ninguno de esos dos fallos. El umbral por defecto (10.0) se eligió a partir de separación empírica real, no adivinado - ver el propio docstring de `detector.py` para las cifras reales de los fixtures de test sintéticos sano-vs-defectuoso de este proyecto.
 * **Cómo encaja en el resto del ecosistema.** Un servicio hermano bajo HYDRA-UMC-DATALAKE - ejecuta detección de anomalías sobre la telemetría que HYDRA-UMC-TELEMETRY-COLLECTOR ya escribió ahí.
 * **Por qué `DriftMonitor` es un mecanismo separado de `AnomalyDetector.score()`, y no un umbral más grande.** Responden preguntas reales distintas: "¿es ESTA ventana anómala?" (un veredicto puntual) frente a "¿se ha desplazado silenciosamente la media RECIENTE?" (una tendencia móvil, robusta ante una única ventana atípica ruidosa). Un test real de deriva simulada encontró y documenta honestamente que, para el diseño de max-z-score de este detector, la propia marca de una ventana individual en realidad se dispara *antes* que la señal de deriva móvil ante un fallo de tipo de frecuencia nuevo - el valor real de `DriftMonitor` aquí es una confirmación de tendencia sostenida, no una alerta más temprana, y el código lo dice así en vez de sobrevenderlo.
@@ -67,15 +67,15 @@ HYDRA-UMC-ANOMALY-DETECTOR/
 ├── src/hydra_umc_anomaly_detector/  # Código fuente
 │   ├── __init__.py                  # Versión del paquete
 │   ├── fft.py                       # Espectro real basado en FFT (numpy)
-│   ├── baseline.py                  # Perfil estadistico sano por bin (media/std)
-│   ├── detector.py                  # Ajusta un Baseline, puntua ventanas en vivo contra el
+│   ├── baseline.py                  # Perfil estadístico sano por bin (media/std)
+│   ├── detector.py                  # Ajusta un Baseline, puntúa ventanas en vivo contra él
 │   ├── metrics.py                   # Precision/recall/F1 reales sobre un fixture etiquetado
-│   ├── drift.py                     # Deteccion real de deriva por media movil
+│   ├── drift.py                     # Detección real de deriva por media móvil
 │   ├── api.py                        # Handlers JSON/HTTP planos que envuelven el detector
 │   └── main.py                       # Punto de entrada: conecta todo, arranca el servidor HTTP
-├── tests/                   # pytest - correccion de FFT, estadistica del baseline, deteccion real de fallos, metricas, deriva simulada
+├── tests/                   # pytest - corrección de FFT, estadística del baseline, detección real de fallos, métricas, deriva simulada
 ├── docs/
-│   └── API.md               # Referencia real de endpoints HTTP (peticiones, respuestas, codigos de estado)
+│   └── API.md               # Referencia real de endpoints HTTP (peticiones, respuestas, códigos de estado)
 ├── images/                  # Medios y diagramas
 ├── systemd/
 │   └── hydra-umc-anomaly-detector.service # Unidad systemd de la API de detección de anomalías en la CM5 local
@@ -83,7 +83,7 @@ HYDRA-UMC-ANOMALY-DETECTOR/
 │   ├── build_test.py        # Comprobación de build/compilación sin subir versión
 │   └── ci_validate.py       # Validación de manifest/CHANGELOG/docs usada por la CI
 ├── build/                   # Salida de build (ignorada por git)
-├── pyproject.toml           # Metadatos del paquete, version, dependencias (numpy)
+├── pyproject.toml           # Metadatos del paquete, versión, dependencias (numpy)
 ├── bump_version.py          # Incremento de versión tipo cuentakilómetros (lo ejecuta el build)
 ├── bump_manifest_version.py # Sincroniza la versión de hydra-umc.project.json con la nativa (--sync)
 ├── build.sh / build.bat     # Build real: venv + instalación editable + bump + tests
@@ -114,8 +114,8 @@ run.bat --port 8097
 ```
 
 `build` crea/activa un `.venv` local, instala el paquete (editable, con
-extras de dev, incluyendo `numpy`) en el, verifica la importación, y corre
-la suite de tests real (`pytest`). `run` arranca la API HTTP y reenvia
+extras de dev, incluyendo `numpy`) en él, verifica la importación, y corre
+la suite de tests real (`pytest`). `run` arranca la API HTTP y reenvía
 cualquier flag (`--addr`, `--port`, `--sample-rate`, `--threshold`).
 
 ```bash
@@ -135,12 +135,12 @@ python -m pytest tests/ -v   # fft.py (el pico de una onda seno conocida
                               # se encuentra correctamente, la DC se
                               # descarta de verdad), baseline.py (media/std
                               # correctas, el suelo de std-cero evita una
-                              # division por cero real), detector.py (la
-                              # promesa real: una señal de fallo sintetica
+                              # división por cero real), detector.py (la
+                              # promesa real: una señal de fallo sintética
                               # se marca, una que parece sana no - con
-                              # margen de separacion real, no un umbral al
+                              # margen de separación real, no un umbral al
                               # filo), y api.py (round-trips HTTP reales
-                              # via un ThreadingHTTPServer genuino)
+                              # vía un ThreadingHTTPServer genuino)
 ```
 
 ---
