@@ -9,12 +9,12 @@ lock so concurrent requests can't corrupt its numpy state.
 Start it with:
 
 ```bash
-hydra-umc-anomaly-detector --addr 0.0.0.0 --port 8097
+hydra-umc-anomaly-detector --addr 127.0.0.1 --port 8097
 ```
 
-`--addr`/`--port` default to `0.0.0.0:8097`. Run `hydra-umc-anomaly-detector --help` for the full flag list (including `--sample-rate` and `--threshold`, which configure the `AnomalyDetector` the server wraps).
+`--addr`/`--port` default to `127.0.0.1:8097` - loopback-only, matching every other internal API in this ecosystem (Datalake, Job-Dispatcher, Telemetry-Collector) and the real CM5's own systemd unit, which already passed this same override explicitly. Run `hydra-umc-anomaly-detector --help` for the full flag list (including `--sample-rate` and `--threshold`, which configure the `AnomalyDetector` the server wraps).
 
-All responses are `application/json`. There is no authentication - this is an internal, same-host/same-network service, not exposed publicly.
+All responses are `application/json`. There is no authentication of any kind on any endpoint, so pass `--addr 0.0.0.0` only with a real understanding of what that exposes on your own network - `POST /baseline/fit` would let anyone reachable overwrite the statistical baseline this detector compares real readings against.
 
 Every JSON request body is limited to 1 MiB. Missing, negative, malformed or
 oversized `Content-Length` values are rejected with `400` before JSON parsing.

@@ -38,6 +38,21 @@ semantic-versioning judgment calls:
   `detector.py`. Verified live against a real running server, not just
   read from source. Documentation-only - no code changed, no version bump.
 
+## [0.1.0]
+
+- **`--addr` now defaults to `127.0.0.1`, not `0.0.0.0`** - found by an
+  ecosystem-wide bug audit: this server has no authentication on any
+  endpoint (`POST /baseline/fit` lets anyone reachable overwrite the
+  statistical baseline this whole detector compares real readings
+  against), and the old default bound to every interface. The real CM5's
+  own systemd unit already passed `--addr 127.0.0.1` explicitly, matching
+  every other internal-only API here (Datalake, Job-Dispatcher,
+  Telemetry-Collector) - no real deployment's behavior changes, but
+  running this tool bare (no systemd unit, a developer testing it
+  locally) is now safe by default instead of silently wide open.
+  `docs/API.md` updated to match, with an explicit warning on
+  `--addr 0.0.0.0`.
+
 ## [0.0.9] - Reject non-finite scores and window samples before they poison a verdict
 
 - **`fft.py`'s `compute_spectrum()`** now rejects a window containing NaN
