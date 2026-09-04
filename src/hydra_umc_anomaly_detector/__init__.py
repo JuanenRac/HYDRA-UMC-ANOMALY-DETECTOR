@@ -11,4 +11,4 @@ before they happen. Child of HYDRA-UMC-DATALAKE in the Data & Analytics
 category.
 """
 
-__version__ = "0.0.9"
+__version__ = "0.1.1"

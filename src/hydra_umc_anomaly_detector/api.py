@@ -21,6 +21,16 @@ from .drift import DriftMonitor, DriftMonitorError
 
 
 MAX_BODY_BYTES = 1024 * 1024
+# How much of an oversized body this drains before responding - a real,
+# reproducible race found by an ecosystem-wide audit: rejecting an
+# over-limit request without reading any of it left the client's own
+# send() still in flight when the handler closed the connection, so on a
+# body bigger than the OS socket buffer the client saw a raw
+# ConnectionAbortedError instead of this clean 400 (flaky - it depended on
+# how much the kernel had already buffered). Draining up to this many
+# bytes lets the client finish sending before the response goes out,
+# without ever holding more than one bounded read in memory.
+DRAIN_CAP_BYTES = MAX_BODY_BYTES * 16
 
 
 def _read_json_body(handler: BaseHTTPRequestHandler) -> dict:
@@ -29,6 +39,8 @@ def _read_json_body(handler: BaseHTTPRequestHandler) -> dict:
     except ValueError as error:
         raise ValueError("Content-Length must be an integer") from error
     if length < 0 or length > MAX_BODY_BYTES:
+        if 0 <= length <= DRAIN_CAP_BYTES:
+            handler.rfile.read(length)
         raise ValueError(f"request body must contain 0-{MAX_BODY_BYTES} bytes")
     raw = handler.rfile.read(length) if length else b"{}"
     return json.loads(raw)

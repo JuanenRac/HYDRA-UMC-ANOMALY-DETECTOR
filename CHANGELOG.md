@@ -20,6 +20,18 @@ semantic-versioning judgment calls:
 
 ---
 
+## [0.1.1]
+
+- **Fixed a real, intermittent connection reset on oversized requests** -
+  found by an ecosystem-wide bug audit. Rejecting a request over the 1 MiB
+  limit closed the connection without ever reading any of the declared
+  body; once that body was larger than the OS socket buffer, the client's
+  own in-flight write got cut off and it saw a raw `ConnectionAbortedError`
+  instead of the intended clean `400`. Flaky by nature - it depended on how
+  much the kernel had already buffered before the handler responded. Fixed
+  by draining a bounded amount of the oversized body first, so the client
+  always finishes sending before the response goes out.
+
 ## Unreleased - bounded HTTP input
 
 - Limits every JSON API request to 1 MiB and rejects negative, malformed or
@@ -37,6 +49,10 @@ semantic-versioning judgment calls:
   fields (`score`, `anomalous`, `worstBinFreqHz`) actually mean per
   `detector.py`. Verified live against a real running server, not just
   read from source. Documentation-only - no code changed, no version bump.
+
+## [0.1.1]
+
+- Build version synchronized with `hydra-umc.project.json` and the repository-native version source.
 
 ## [0.1.0]
 
