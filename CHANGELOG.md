@@ -29,6 +29,7 @@ semantic-versioning judgment calls:
   much the kernel had already buffered before the handler responded. Fixed
   by draining a bounded amount of the oversized body first, so the client
   always finishes sending before the response goes out.
+- Build version synchronized with `hydra-umc.project.json` and the repository-native version source.
 
 ## Unreleased - bounded HTTP input
 
@@ -47,10 +48,6 @@ semantic-versioning judgment calls:
   fields (`score`, `anomalous`, `worstBinFreqHz`) actually mean per
   `detector.py`. Verified live against a real running server, not just
   read from source. Documentation-only - no code changed, no version bump.
-
-## [0.1.1]
-
-- Build version synchronized with `hydra-umc.project.json` and the repository-native version source.
 
 ## [0.1.0]
 
