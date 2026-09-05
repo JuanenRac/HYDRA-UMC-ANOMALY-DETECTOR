@@ -1,9 +1,7 @@
 # Changelog
 
-All notable work on **HYDRA-UMC-ANOMALY-DETECTOR** is summarized here, newest first. Full
-session-by-session detail (including dates) lives in a private,
-unpublished internal log - this file is public, so it intentionally
-omits calendar dates.
+All notable work on **HYDRA-UMC-ANOMALY-DETECTOR** is summarized here, newest first. This
+file intentionally omits calendar dates from individual entries.
 
 ## Versioning scheme
 
