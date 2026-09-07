@@ -1,0 +1,27 @@
+# =============================================================================
+# HYDRA-UMC-ANOMALY-DETECTOR - Local CM5 FFT anomaly-detection API systemd unit
+# Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
+# GPL-3.0-or-later - see LICENSE
+# =============================================================================
+[Unit]
+Description=HYDRA-UMC-ANOMALY-DETECTOR real FFT + z-score anomaly-detection API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=hydra-umc-anomaly
+Group=hydra-umc-anomaly
+WorkingDirectory=/opt/hydra-umc/anomaly-detector
+Environment=PYTHONPATH=/opt/hydra-umc/anomaly-detector/src
+ExecStart=/usr/bin/python3 -m hydra_umc_anomaly_detector.main --addr 127.0.0.1 --port 8097
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+
+[Install]
+WantedBy=multi-user.target
