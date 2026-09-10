@@ -79,8 +79,7 @@ class AnomalyDetector:
 
     def restore(self, baseline: Baseline, model_version: int) -> None:
         """Restores a previously-fit, persisted `Baseline` exactly as it
-        was - found in an ecosystem-wide software-improvements audit:
-        the fitted baseline used to live only in memory, so a real
+        was - the fitted baseline used to live only in memory, so a real
         service restart lost it. Unlike `fit()`, this does NOT increment
         `model_version` - it's the SAME real model that already existed
         before the restart, not a newly-fit one, so a `Verdict` from

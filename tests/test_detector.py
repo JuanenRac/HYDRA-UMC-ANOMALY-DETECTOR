@@ -87,7 +87,7 @@ def test_threshold_is_configurable() -> None:
 def test_restore_sets_the_exact_persisted_model_version_not_an_increment(
     fitted_detector: AnomalyDetector,
 ) -> None:
-    # Found in an ecosystem-wide software-improvements audit: restore()
+    # restore()
     # exists so a real service restart doesn't lose the fitted baseline -
     # unlike fit(), it must NOT bump model_version, since this is the
     # SAME model that already existed before the restart.

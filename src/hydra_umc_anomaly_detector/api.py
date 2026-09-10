@@ -23,8 +23,8 @@ from .drift import DriftMonitor, DriftMonitorError
 
 MAX_BODY_BYTES = 1024 * 1024
 # How much of an oversized body this drains before responding - a real,
-# reproducible race found by an ecosystem-wide audit: rejecting an
-# over-limit request without reading any of it left the client's own
+# reproducible race: rejecting an over-limit request without reading any
+# of it left the client's own
 # send() still in flight when the handler closed the connection, so on a
 # body bigger than the OS socket buffer the client saw a raw
 # ConnectionAbortedError instead of this clean 400 (flaky - it depended on
@@ -88,9 +88,8 @@ class Handler(BaseHTTPRequestHandler):
             with self.server.lock:
                 self.server.detector.fit(windows)
                 if self.server.baseline_path is not None:
-                    # Real gap found in an ecosystem-wide software-
-                    # improvements audit: the fitted baseline used to
-                    # live only in memory - persist it now, inside the
+                    # The fitted baseline used to live only in memory -
+                    # persist it now, inside the
                     # same lock, so a concurrent GET /stats or POST
                     # /detect never observes a fit that hasn't actually
                     # been saved yet.
@@ -225,8 +224,7 @@ class DetectorServer(ThreadingHTTPServer):
         self.detector = detector
         self.drift_monitor: DriftMonitor | None = None
         self.lock = threading.Lock()
-        # Optional - found missing in an ecosystem-wide software-
-        # improvements audit. None (the default) means every existing
+        # Optional. None (the default) means every existing
         # behavior is unchanged: POST /baseline/fit only ever updated
         # in-memory state, exactly as before this option existed.
         self.baseline_path = baseline_path

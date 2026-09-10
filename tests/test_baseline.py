@@ -67,9 +67,8 @@ def test_min_std_floor_prevents_division_by_zero() -> None:
 
 
 # ---------------------------------------------------------------------------
-# save_baseline() / load_baseline() - found missing in an ecosystem-wide
-# software-improvements audit: the fitted baseline used to live only in
-# memory, so a real service restart lost it.
+# save_baseline() / load_baseline() - the fitted baseline used to live
+# only in memory, so a real service restart lost it.
 # ---------------------------------------------------------------------------
 
 
