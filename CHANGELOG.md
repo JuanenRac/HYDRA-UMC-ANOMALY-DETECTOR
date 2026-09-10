@@ -28,8 +28,7 @@ semantic-versioning judgment calls:
   to train and validate against, which doesn't exist yet, so that stays
   deliberately deferred future work.
 - **New `datalake_client.py`** (`DatalakeClient`, `fetch_windows()`) -
-  this
-  project's own README describes running "on telemetry
+  this project's own README describes running "on telemetry
   HYDRA-UMC-TELEMETRY-COLLECTOR already wrote there", but no code
   anywhere in this repo ever actually queried HYDRA-UMC-DATALAKE - today
   that meant pasting raw arrays into `POST /baseline/fit`/`POST /detect`
@@ -68,8 +67,8 @@ semantic-versioning judgment calls:
 
 ## [0.1.1]
 
-- **Fixed a real, intermittent connection reset on oversized requests** -
- . Rejecting a request over the 1 MiB
+- **Fixed a real, intermittent connection reset on oversized requests.**
+  Rejecting a request over the 1 MiB
   limit closed the connection without ever reading any of the declared
   body; once that body was larger than the OS socket buffer, the client's
   own in-flight write got cut off and it saw a raw `ConnectionAbortedError`
