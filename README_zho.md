@@ -75,6 +75,7 @@ HYDRA-UMC-ANOMALY-DETECTOR/
 │   ├── detector.py                  # 拟合一个 Baseline，对实时窗口打分
 │   ├── metrics.py                   # 基于标注测试样本的真实 precision/recall/F1
 │   ├── drift.py                     # 真实的滚动均值漂移检测
+│   ├── datalake_client.py            # 从 HYDRA-UMC-DATALAKE 获取按时间戳排序的数据点，并切分为定长窗口
 │   ├── api.py                        # 封装 detector 的简单 JSON/HTTP 处理器
 │   └── main.py                       # 入口点：连接一切，启动 HTTP 服务器
 ├── tests/                   # pytest——FFT 正确性、baseline 统计、真实故障检测、指标、模拟漂移
