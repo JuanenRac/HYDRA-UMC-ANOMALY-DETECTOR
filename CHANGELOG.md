@@ -20,7 +20,7 @@ semantic-versioning judgment calls:
 
 ## [0.1.2] - Real DATALAKE client, persisted baseline, and a public-doc fix
 
-- **DOC-03 (found in an ecosystem-wide software-improvements audit):**
+- **DOC-03:**
   `detector.py` (two sites) and this file pointed a reader at a tracking
   file that doesn't exist anywhere in this repo - a stale/broken
   reference, not a link to a real document. Replaced with the same
@@ -28,7 +28,7 @@ semantic-versioning judgment calls:
   to train and validate against, which doesn't exist yet, so that stays
   deliberately deferred future work.
 - **New `datalake_client.py`** (`DatalakeClient`, `fetch_windows()`) -
-  found in an ecosystem-wide software-improvements audit: this
+  this
   project's own README describes running "on telemetry
   HYDRA-UMC-TELEMETRY-COLLECTOR already wrote there", but no code
   anywhere in this repo ever actually queried HYDRA-UMC-DATALAKE - today
@@ -44,7 +44,7 @@ semantic-versioning judgment calls:
   history at startup.
 - **The fitted baseline can now survive a restart** (new
   `save_baseline()`/`load_baseline()` in `baseline.py`,
-  `AnomalyDetector.restore()`) - found in the same audit: the fitted
+  `AnomalyDetector.restore()`) - the fitted
   baseline lived only in memory, forcing a re-run of
   `POST /baseline/fit` by hand after every service restart. New
   `--baseline-path` flag persists to a real `.npz` file on every
@@ -69,7 +69,7 @@ semantic-versioning judgment calls:
 ## [0.1.1]
 
 - **Fixed a real, intermittent connection reset on oversized requests** -
-  found by an ecosystem-wide bug audit. Rejecting a request over the 1 MiB
+ . Rejecting a request over the 1 MiB
   limit closed the connection without ever reading any of the declared
   body; once that body was larger than the OS socket buffer, the client's
   own in-flight write got cut off and it saw a raw `ConnectionAbortedError`
@@ -99,8 +99,8 @@ semantic-versioning judgment calls:
 
 ## [0.1.0]
 
-- **`--addr` now defaults to `127.0.0.1`, not `0.0.0.0`** - found by an
-  ecosystem-wide bug audit: this server has no authentication on any
+- **`--addr` now defaults to `127.0.0.1`, not `0.0.0.0`** - this server
+  has no authentication on any
   endpoint (`POST /baseline/fit` lets anyone reachable overwrite the
   statistical baseline this whole detector compares real readings
   against), and the old default bound to every interface. The real CM5's
@@ -161,8 +161,8 @@ semantic-versioning judgment calls:
 
 ## [0.0.6] - Fixed a real unhandled-exception crash on malformed `/baseline/fit` and `/detect` requests
 
-- **`src/hydra_umc_anomaly_detector/api.py`** - found in a live ecosystem bug
-  audit: `_handle_fit()`'s and `_handle_detect()`'s inner `try`/`except`
+- **`src/hydra_umc_anomaly_detector/api.py`** - `_handle_fit()`'s and
+  `_handle_detect()`'s inner `try`/`except`
   around the actual `detector.fit()`/`detector.score()` calls only caught
   `BaselineError` (plus `NotFittedError` in detect), but both real calls
   route through `fft.compute_spectrum()`, which raises a plain `ValueError`

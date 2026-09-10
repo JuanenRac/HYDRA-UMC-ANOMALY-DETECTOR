@@ -38,7 +38,7 @@ ROLE = (
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="hydra-umc-anomaly-detector")
-    # Real gap found by an ecosystem-wide audit: this used to default to
+    # Real gap: this used to default to
     # "0.0.0.0" (every interface) with zero authentication on any
     # endpoint (POST /baseline/fit lets anyone reachable overwrite the
     # statistical baseline this whole detector compares real readings
@@ -62,8 +62,7 @@ def main(argv: list[str] | None = None) -> int:
         default=10.0,
         help="max per-bin z-score above which a reading is flagged anomalous (see detector.py's own docstring for why 10.0)",
     )
-    # Real gap found in an ecosystem-wide software-improvements audit:
-    # the fitted baseline lived only in memory - a service restart lost
+    # Real gap - the fitted baseline lived only in memory - a service restart lost
     # it and forced re-running POST /baseline/fit by hand. All optional;
     # omitted (the default) means every existing behavior is unchanged.
     parser.add_argument(
@@ -71,7 +70,7 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help="Persist the fitted baseline here (numpy .npz) and restore it from here on startup if present.",
     )
-    # Real gap found in the same audit: this project's own README
+    # Real gap: this project's own README
     # describes running "on telemetry HYDRA-UMC-TELEMETRY-COLLECTOR
     # already wrote there", but nothing here ever actually queried
     # HYDRA-UMC-DATALAKE - fitting meant pasting raw arrays by hand.

@@ -3,7 +3,7 @@
 # Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
 # GPL-3.0 - see LICENSE
 # =============================================================================
-"""Found missing in an ecosystem-wide software-improvements audit: no
+"""A real gap: no
 code anywhere in this repo ever queried HYDRA-UMC-DATALAKE, despite the
 README describing exactly that. Real end-to-end tests against a real
 local HTTP server (fake_datalake.py) implementing DATALAKE's actual

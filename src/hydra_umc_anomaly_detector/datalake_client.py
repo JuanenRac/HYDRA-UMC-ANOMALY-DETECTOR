@@ -4,8 +4,7 @@
 # GPL-3.0 - see LICENSE
 # =============================================================================
 """A real HTTP client for HYDRA-UMC-DATALAKE's own API
-(src/hydra_umc_datalake/api.py) - found missing in an ecosystem-wide
-software-improvements audit: this project's own README describes running
+(src/hydra_umc_datalake/api.py). This project's own README describes running
 "on telemetry HYDRA-UMC-TELEMETRY-COLLECTOR already wrote there", but no
 code anywhere in this repo ever actually queried DATALAKE - today that
 meant pasting raw arrays into POST /baseline/fit / POST /detect by hand.

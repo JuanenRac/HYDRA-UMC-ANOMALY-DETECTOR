@@ -81,8 +81,7 @@ def fit_baseline(
 
 
 def save_baseline(path: Path, baseline: Baseline, model_version: int) -> None:
-    """Persists a fitted Baseline to disk - found in an ecosystem-wide
-    software-improvements audit: the fitted baseline used to live only in
+    """Persists a fitted Baseline to disk - the fitted baseline used to live only in
     memory, so a service restart lost it and forced re-running
     POST /baseline/fit by hand. Uses numpy's own compressed `.npz` format
     (no new dependency, no home-grown binary format) - opened as a real

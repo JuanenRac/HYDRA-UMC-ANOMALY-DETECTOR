@@ -241,7 +241,7 @@ def test_drift_real_end_to_end_round_trip(server_url: str) -> None:
 
 
 def test_fit_persists_the_baseline_when_a_path_is_configured(tmp_path) -> None:
-    # Found in an ecosystem-wide software-improvements audit: the fitted
+    # the fitted
     # baseline used to live only in memory. Real end-to-end proof against
     # a real running server, not just save_baseline()/load_baseline() in
     # isolation.
