@@ -78,6 +78,7 @@ HYDRA-UMC-ANOMALY-DETECTOR/
 │   ├── detector.py                  # Baseline をフィットし、ライブウィンドウをそれに対して採点
 │   ├── metrics.py                   # ラベル付きフィクスチャに基づく本物の precision/recall/F1
 │   ├── drift.py                     # 移動平均による本物のドリフト検知
+│   ├── datalake_client.py            # HYDRA-UMC-DATALAKE からタイムスタンプ順のポイントを取得し、固定長ウィンドウに分割
 │   ├── api.py                        # detector を包む単純な JSON/HTTP ハンドラー
 │   └── main.py                       # エントリポイント：すべてを接続し、HTTP サーバーを起動
 ├── tests/                   # pytest - FFT の正しさ、baseline の統計、実際の故障検知、メトリクス、シミュレートされたドリフト

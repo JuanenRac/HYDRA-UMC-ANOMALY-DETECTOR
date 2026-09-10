@@ -71,6 +71,7 @@ HYDRA-UMC-ANOMALY-DETECTOR/
 │   ├── detector.py                  # Ajuste un Baseline, note les fenêtres en direct contre lui
 │   ├── metrics.py                   # Precision/recall/F1 réels sur un jeu de données étiqueté
 │   ├── drift.py                     # Détection réelle de dérive par moyenne glissante
+│   ├── datalake_client.py            # Récupère les points ordonnés par horodatage depuis HYDRA-UMC-DATALAKE et les découpe en fenêtres de longueur fixe
 │   ├── api.py                        # Handlers JSON/HTTP simples encapsulant le détecteur
 │   └── main.py                       # Point d'entrée : relie tout, démarre le serveur HTTP
 ├── tests/                   # pytest - correction de la FFT, statistiques du baseline, détection réelle de pannes, métriques, dérive simulée
