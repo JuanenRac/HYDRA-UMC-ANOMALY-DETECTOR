@@ -16,6 +16,10 @@
 
 ---
 
+> **誠実性チェック - 今日実際に動くもの:** FFT スペクトル（`fft.py`）、ビンごとの統計ベースライン（`baseline.py`）、max-z-score 異常検知器（`detector.py`）、ラベル付きフィクスチャ上での精度/再現率/F1 指標（`metrics.py`）、移動平均によるドリフト検知（`drift.py`）、本物の HYDRA-UMC-DATALAKE HTTP クライアント（`datalake_client.py`）、そして素の JSON/HTTP API（`api.py`）は本物であり、テスト済みである（62件のテストが通過：`pytest tests/` - `test_fft.py`、`test_baseline.py`、`test_detector.py`、`test_metrics.py`、`test_drift.py`、`test_datalake_client.py`、`test_api.py`）。以下の「AI-driven」および「Learning Models」は、健全と分かっているウィンドウから適合させた統計ベースラインを伴う本物の信号処理を指しており、学習済みのニューラルネットワークでも、バックグラウンドでの継続的な学習でもない：ベースラインは一度だけ適合され、起動時に本物の DATALAKE 履歴から、あるいは明示的な `POST /baseline/fit` 呼び出しによって適合し、次に明示的に再適合されるまでそのモデルバージョンのまま保たれる（`detector.py` 自身のモデルバージョン管理を参照）。以下の ROADMAP のフェーズ3・4（教師なし学習、音響解析）は完全に構想段階であり、本リポジトリにはどちらのコードもまだ存在しない。これまでに実際に出荷された内容は `CHANGELOG.md` を参照。
+
+---
+
 ## 1. 🛠️ 技術概要
 
 **HYDRA-UMC-ANOMALY-DETECTOR** は、ロボットの健全性を守る積極的な
