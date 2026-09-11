@@ -16,6 +16,10 @@
 
 ---
 
+> **Verifica di onestà - cosa funziona davvero oggi:** lo spettro FFT (`fft.py`), la baseline statistica per bin (`baseline.py`), il rilevatore di anomalie a max-z-score (`detector.py`), le metriche precisione/recall/F1 su una fixture etichettata (`metrics.py`), il rilevamento della deriva a media mobile (`drift.py`), il vero client HTTP di HYDRA-UMC-DATALAKE (`datalake_client.py`), e la semplice API JSON/HTTP (`api.py`) sono reali e testati (62 test superati: `pytest tests/` - `test_fft.py`, `test_baseline.py`, `test_detector.py`, `test_metrics.py`, `test_drift.py`, `test_datalake_client.py`, `test_api.py`). "AI-driven" e "Learning Models" qui sotto descrivono vera elaborazione del segnale più una baseline statistica adattata da finestre note come sane - non una rete neurale addestrata, e non un apprendimento continuo in background: una baseline viene adattata una sola volta, all'avvio a partire dalla vera cronologia DATALAKE oppure tramite una chiamata esplicita a `POST /baseline/fit`, e resta esattamente quella versione di modello fino al prossimo riadattamento esplicito (vedi il versionamento del modello proprio di `detector.py`). Le Fasi 3 e 4 della ROADMAP qui sotto (apprendimento non supervisionato, analisi acustica) sono completamente aspirazionali - non esiste ancora codice per nessuna delle due in questo repository. Vedi `CHANGELOG.md` per cosa è stato esattamente consegnato finora.
+
+---
+
 ## 1. 🛠️ PANORAMICA TECNICA
 
 **HYDRA-UMC-ANOMALY-DETECTOR** è il guardiano proattivo della salute robotica. Utilizza modelli AI per analizzare la telemetria ad alta frequenza (vibrazioni, firme di corrente del motore e profili termici) per rilevare i guasti prima che accadano.

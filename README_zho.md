@@ -16,6 +16,10 @@
 
 ---
 
+> **诚实检查——今天真正可运行的部分：** FFT 频谱（`fft.py`）、按频段的统计基线（`baseline.py`）、max-z-score 异常检测器（`detector.py`）、基于带标签测试集的精确率/召回率/F1 指标（`metrics.py`）、滚动均值漂移检测（`drift.py`）、真正的 HYDRA-UMC-DATALAKE HTTP 客户端（`datalake_client.py`），以及简单的 JSON/HTTP API（`api.py`）都是真实的并经过测试（62 个测试全部通过：`pytest tests/` —— `test_fft.py`、`test_baseline.py`、`test_detector.py`、`test_metrics.py`、`test_drift.py`、`test_datalake_client.py`、`test_api.py`）。下文中的 "AI-driven" 和 "Learning Models" 描述的是真实的信号处理加上从已知健康窗口拟合出的统计基线——不是训练出来的神经网络，也不是后台持续学习：基线只会拟合一次，要么在启动时从真实的 DATALAKE 历史数据拟合，要么通过显式调用 `POST /baseline/fit`，在下一次显式重新拟合之前会一直保持同一个模型版本（见 `detector.py` 自身的模型版本管理）。下文 ROADMAP 中的第 3、4 阶段（无监督学习、声学分析）完全是愿景性的——本仓库目前还没有任何相关代码。目前具体已交付的内容见 `CHANGELOG.md`。
+
+---
+
 ## 1. 🛠️ 技术概述
 
 **HYDRA-UMC-ANOMALY-DETECTOR** 是机器人健康状态的主动守护者。它使用 AI
