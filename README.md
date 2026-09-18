@@ -27,10 +27,10 @@
 By monitoring the "digital fingerprint" of every motor and tool head, it can identify bearing wear, loose belts, or cooling failures weeks in advance, enabling scheduled maintenance instead of emergency repairs.
 
 ### Key Features:
-* 🔍 **Signature Analysis:** Real-time FFT (Fast Fourier Transform) of motor currents to detect mechanical imbalance.
-* 📉 **Predictive Maintenance:** AI-driven RUL (Remaining Useful Life) estimation for NEMA motors and URTC tools.
-* 🚨 **Early Warning System:** Triggers alerts in the Studio and Watch interfaces when abnormal patterns emerge.
-* 🧬 **Learning Models:** Continuously improves detection accuracy by learning from the Datalake's history.
+* 🔍 **Signature Analysis:** Real-time FFT (Fast Fourier Transform) of motor currents to detect mechanical imbalance. *(implemented)*
+* 📉 **Predictive Maintenance:** RUL (Remaining Useful Life) estimation for NEMA motors and URTC tools - aspirational, no code for it exists in this repo yet.
+* 🚨 **Early Warning System:** Surfacing alerts directly in the Studio and Watch interfaces - aspirational; today the detector only exposes its verdicts over its own plain HTTP API (`api.py`), the consuming UIs don't poll it yet.
+* 🧬 **Baseline Learning:** Fits its statistical baseline from the Datalake's own known-healthy history - not continuous background learning, but a real, explicit refit whenever one is requested. *(implemented)*
 * 🏷️ **Model Versioning:** Every `Verdict` carries the real, monotonic model version and threshold it was scored against - a refit is a real, traceable event. *(implemented)*
 * 📐 **Precision/Recall Metrics:** Real, computed precision/recall/F1 over a labeled fixture (`metrics.py`), not just prose claims about score separation. *(implemented)*
 * 📈 **Simulated Drift Detection:** `DriftMonitor` flags a real, sustained rolling-mean elevation distinct from any single window's own anomaly flag. *(implemented)*

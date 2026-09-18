@@ -20,7 +20,7 @@ semantic-versioning judgment calls:
 
 ## [0.1.2] - Real DATALAKE client, persisted baseline, and a public-doc fix
 
-- **DOC-03:**
+- **Fixed a stale doc reference:**
   `detector.py` (two sites) and this file pointed a reader at a tracking
   file that doesn't exist anywhere in this repo - a stale/broken
   reference, not a link to a real document. Replaced with the same

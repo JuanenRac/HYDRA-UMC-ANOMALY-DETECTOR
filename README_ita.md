@@ -27,10 +27,10 @@
 Monitorando l'«impronta digitale» di ogni motore e testina dello strumento, può identificare l'usura dei cuscinetti, le cinghie allentate o i guasti al raffreddamento con settimane di anticipo, consentendo una manutenzione programmata invece di riparazioni di emergenza.
 
 ### Caratteristiche principali:
-* 🔍 **Analisi della firma:** FFT (Fast Fourier Transform) in tempo reale delle correnti del motore per rilevare squilibri meccanici.
-* 📉 **Manutenzione predittiva:** Stima RUL (Remaining Useful Life) guidata dall'IA per motori NEMA e strumenti URTC.
-* 🚨 **Sistema di allerta precoce:** Attiva avvisi nelle interfacce Studio e Watch quando emergono schemi anormali.
-* 🧬 **Modelli di apprendimento:** Migliora continuamente l'accuratezza del rilevamento imparando dalla cronologia del Datalake.
+* 🔍 **Analisi della firma:** FFT (Fast Fourier Transform) in tempo reale delle correnti del motore per rilevare squilibri meccanici. *(implementato)*
+* 📉 **Manutenzione predittiva:** Stima RUL (Remaining Useful Life) per motori NEMA e strumenti URTC - aspirazionale, non esiste ancora codice per questo in questo repository.
+* 🚨 **Sistema di allerta precoce:** Mostrare avvisi direttamente nelle interfacce Studio e Watch - aspirazionale; oggi il rilevatore espone i propri verdetti solo tramite la propria semplice API HTTP (`api.py`), quelle interfacce non la interrogano ancora.
+* 🧬 **Apprendimento della baseline:** Adatta la propria baseline statistica dalla cronologia reale nota come sana del Datalake - non è apprendimento continuo in background, ma un riadattamento reale ed esplicito ogni volta che viene richiesto. *(implementato)*
 * 🏷️ **Versionamento del modello:** Ogni `Verdict` porta con sé la versione reale e monotona del modello e la soglia rispetto a cui è stato valutato - un riadattamento (refit) è un evento reale e tracciabile. *(implementato)*
 * 📐 **Metriche di precisione/recall:** Precision/recall/F1 reali, calcolati su un fixture etichettato (`metrics.py`), non solo affermazioni in prosa sulla separazione dei punteggi. *(implementato)*
 * 📈 **Rilevamento di deriva simulata:** `DriftMonitor` segnala un innalzamento sostenuto reale della media mobile, distinto dal flag di anomalia proprio di una singola finestra. *(implementato)*
