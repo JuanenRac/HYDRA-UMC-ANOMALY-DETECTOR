@@ -31,7 +31,7 @@ Durch die Überwachung des "digitalen Fingerabdrucks" jedes Motors und Werkzeugk
 * 📉 **Vorausschauende Wartung:** RUL-Schätzung (Remaining Useful Life) für NEMA-Motoren und URTC-Werkzeuge - angestrebt, dafür existiert in diesem Repository noch kein Code.
 * 🚨 **Frühwarnsystem:** Alarme direkt in den Studio- und Watch-Schnittstellen anzeigen - angestrebt; heute stellt der Detektor seine Verdicts nur über seine eigene einfache HTTP-API (`api.py`) bereit, diese Oberflächen fragen sie noch nicht ab.
 * 🧬 **Baseline-Lernen:** Passt seine statistische Baseline anhand der echten, als gesund bekannten Historie aus dem Datalake an - kein kontinuierliches Lernen im Hintergrund, sondern ein echtes, explizites Neu-Fitting bei jeder Anforderung. *(implementiert)*
-* 🏷️ **Modellversionierung:** Jedes `Verdict` trägt die echte, monoton steigende Modellversion und den Schwellenwert, gegen den es bewertet wurde - ein Refit ist ein echtes, nachvollziehbares Ereignis. *(implementiert)*
+* 🏷️ **Modellversionierung:** Jedes `Verdict` trägt die echte, monoton steigende Modellversion und den Schwellenwert, gegen den es bewertet wurde - ein Refit ist ein echtes, nachvollziehbares Ereignis. Zudem wird angegeben, aus wie vielen gesunden Fenstern die Baseline kalibriert wurde, damit ein Alarm erklärbar und reproduzierbar ist. *(implementiert)*
 * 📐 **Precision/Recall-Metriken:** Echte, berechnete Precision/Recall/F1-Werte über eine gelabelte Fixture (`metrics.py`), nicht nur Prosa-Behauptungen über die Score-Trennung. *(implementiert)*
 * 📈 **Simulierte Drift-Erkennung:** `DriftMonitor` meldet eine echte, anhaltende Erhöhung des gleitenden Mittelwerts, die sich vom eigenen Anomalie-Flag eines einzelnen Fensters unterscheidet. *(implementiert)*
 

@@ -85,6 +85,8 @@ def test_save_and_load_baseline_round_trips_exactly(tmp_path) -> None:
     assert np.array_equal(restored.freqs, baseline.freqs)
     assert np.array_equal(restored.mean, baseline.mean)
     assert np.array_equal(restored.std, baseline.std)
+    assert restored.n_windows == 5
+    assert restored.sample_rate == sample_rate
 
 
 def test_save_baseline_never_appends_an_npz_suffix_of_its_own(tmp_path) -> None:
@@ -113,3 +115,16 @@ def test_load_baseline_raises_a_clear_error_for_a_corrupt_file(tmp_path) -> None
     path.write_bytes(b"not a real npz file")
     with pytest.raises(BaselineError):
         load_baseline(path)
+
+
+def test_baseline_saved_without_provenance_loads_as_unknown(tmp_path) -> None:
+    path = tmp_path / "old.npz"
+    freqs = np.arange(3, dtype=float)
+    with open(path, "wb") as fh:
+        np.savez(fh, freqs=freqs, mean=freqs, std=freqs + 1, model_version=np.asarray(2))
+
+    restored, model_version = load_baseline(path)
+
+    assert model_version == 2
+    assert restored.n_windows == 0
+    assert restored.sample_rate == 0.0

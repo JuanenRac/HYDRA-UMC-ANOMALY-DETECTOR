@@ -40,6 +40,7 @@ class Verdict:
     worst_bin_freq: float
     model_version: int
     threshold: float
+    calibration_windows: int = 0
 
 
 class AnomalyDetector:
@@ -129,4 +130,5 @@ class AnomalyDetector:
             worst_bin_freq=float(self._baseline.freqs[worst_idx]),
             model_version=self._model_version,
             threshold=self._threshold,
+            calibration_windows=self._baseline.n_windows,
         )

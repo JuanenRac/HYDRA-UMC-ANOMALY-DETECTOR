@@ -146,6 +146,7 @@ class Handler(BaseHTTPRequestHandler):
                 "worstBinFreqHz": verdict.worst_bin_freq,
                 "modelVersion": verdict.model_version,
                 "threshold": verdict.threshold,
+                "calibrationWindows": verdict.calibration_windows,
             },
         )
 

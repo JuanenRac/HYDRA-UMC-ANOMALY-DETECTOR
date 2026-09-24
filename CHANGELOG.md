@@ -18,6 +18,16 @@ semantic-versioning judgment calls:
 
 ---
 
+## [0.1.3]
+
+- **Calibration provenance:** a fitted `Baseline` now records how many
+  healthy windows and which sample rate it was calibrated from. The
+  numbers are persisted with the baseline (files saved before this load
+  as "unknown", never guessed), carried on every `Verdict`
+  (`calibration_windows`) and returned by `POST /detect` as
+  `calibrationWindows`, so an alarm can be explained and reproduced.
+- README versioning bullet updated in all seven languages.
+
 ## [0.1.2] - Real DATALAKE client, persisted baseline, and a public-doc fix
 
 - **Fixed a stale doc reference:**

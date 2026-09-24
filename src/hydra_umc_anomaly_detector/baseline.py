@@ -31,6 +31,11 @@ class Baseline:
     freqs: np.ndarray
     mean: np.ndarray
     std: np.ndarray
+    # Calibration provenance: how many healthy windows this baseline was
+    # fit from and at what sample rate. 0 means "unknown" (a baseline
+    # persisted before this was recorded), never a guess.
+    n_windows: int = 0
+    sample_rate: float = 0.0
 
     def z_scores(self, spectrum: Spectrum) -> np.ndarray:
         """Per-bin z-scores of `spectrum` against this baseline - the
@@ -77,7 +82,13 @@ def fit_baseline(
     magnitudes = np.stack([s.magnitudes for s in spectra])  # shape (n_windows, n_bins)
     mean = magnitudes.mean(axis=0)
     std = np.maximum(magnitudes.std(axis=0), min_std)
-    return Baseline(freqs=spectra[0].freqs, mean=mean, std=std)
+    return Baseline(
+        freqs=spectra[0].freqs,
+        mean=mean,
+        std=std,
+        n_windows=len(healthy_windows),
+        sample_rate=float(sample_rate),
+    )
 
 
 def save_baseline(path: Path, baseline: Baseline, model_version: int) -> None:
@@ -90,7 +101,15 @@ def save_baseline(path: Path, baseline: Baseline, model_version: int) -> None:
     already end in one.
     """
     with open(path, "wb") as fh:
-        np.savez(fh, freqs=baseline.freqs, mean=baseline.mean, std=baseline.std, model_version=np.asarray(model_version))
+        np.savez(
+            fh,
+            freqs=baseline.freqs,
+            mean=baseline.mean,
+            std=baseline.std,
+            model_version=np.asarray(model_version),
+            n_windows=np.asarray(baseline.n_windows),
+            sample_rate=np.asarray(baseline.sample_rate),
+        )
 
 
 def load_baseline(path: Path) -> tuple[Baseline, int]:
@@ -106,6 +125,9 @@ def load_baseline(path: Path) -> tuple[Baseline, int]:
             mean = data["mean"]
             std = data["std"]
             model_version = int(data["model_version"])
+            # Absent in files saved before provenance was recorded.
+            n_windows = int(data["n_windows"]) if "n_windows" in data.files else 0
+            sample_rate = float(data["sample_rate"]) if "sample_rate" in data.files else 0.0
     except (OSError, KeyError, ValueError) as exc:
         raise BaselineError(f"could not load baseline from {path}: {exc}") from exc
-    return Baseline(freqs=freqs, mean=mean, std=std), model_version
+    return Baseline(freqs=freqs, mean=mean, std=std, n_windows=n_windows, sample_rate=sample_rate), model_version

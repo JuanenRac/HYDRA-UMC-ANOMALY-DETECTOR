@@ -174,6 +174,7 @@ def test_detect_response_carries_real_model_version_and_threshold(server_url: st
     assert status == 200
     assert body["modelVersion"] == 1
     assert body["threshold"] == 4.0
+    assert body["calibrationWindows"] == 5
 
 
 def test_drift_observe_before_init_is_409(server_url: str) -> None:
