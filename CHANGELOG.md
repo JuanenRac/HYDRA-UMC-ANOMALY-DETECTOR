@@ -71,10 +71,6 @@ semantic-versioning judgment calls:
   regression in `tests/` could be merged without CI ever failing. CI-only
   fix, no runtime code changed, no version bump.
 
-## [0.1.2]
-
-- Build version synchronized with `hydra-umc.project.json` and the repository-native version source.
-
 ## [0.1.1]
 
 - **Fixed a real, intermittent connection reset on oversized requests.**
@@ -88,14 +84,12 @@ semantic-versioning judgment calls:
   always finishes sending before the response goes out.
 - Build version synchronized with `hydra-umc.project.json` and the repository-native version source.
 
-## Unreleased - bounded HTTP input
+**Bounded HTTP input**
 
 - Limits every JSON API request to 1 MiB and rejects negative, malformed or
   oversized `Content-Length` values before reading/parsing a request body.
   This prevents an accidental or hostile client from requesting an unbounded
   read on the detector service.
-
----
 
 ## Documentation - Real HTTP API reference
 
