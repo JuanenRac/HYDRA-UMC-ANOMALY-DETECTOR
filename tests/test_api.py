@@ -268,3 +268,25 @@ def test_fit_persists_the_baseline_when_a_path_is_configured(tmp_path) -> None:
         server.shutdown()
         server.server_close()
         thread.join(timeout=2)
+
+
+def test_a_client_that_sends_nothing_is_dropped_instead_of_holding_a_thread(monkeypatch) -> None:
+    import socket
+    import time
+
+    from hydra_umc_anomaly_detector.api import Handler
+
+    monkeypatch.setattr(Handler, "timeout", 0.3)
+    server = DetectorServer(("127.0.0.1", 0), AnomalyDetector(SAMPLE_RATE))
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        with socket.create_connection(("127.0.0.1", server.server_address[1]), timeout=5) as client:
+            started = time.monotonic()
+            # sends nothing; the server must close the connection by itself
+            assert client.recv(1) == b""
+            assert time.monotonic() - started < 3
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)

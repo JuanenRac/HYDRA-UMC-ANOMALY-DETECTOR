@@ -59,6 +59,12 @@ def _write_json(handler: BaseHTTPRequestHandler, status: int, payload: object) -
 class Handler(BaseHTTPRequestHandler):
     server: "DetectorServer"
 
+    # Seconds a client may stay silent on its connection before the server
+    # drops it: with no limit, a client that opens a connection and sends
+    # nothing (or a body one byte at a time) holds a handler thread forever.
+    # It bounds socket I/O only, never the time a request spends computing.
+    timeout = 15.0
+
     def log_message(self, format: str, *args: object) -> None:  # noqa: A002
         pass  # quiet by default, same reasoning as HYDRA-UMC-DATALAKE's api.py
 

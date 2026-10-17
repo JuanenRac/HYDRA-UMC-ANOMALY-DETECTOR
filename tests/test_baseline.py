@@ -128,3 +128,48 @@ def test_baseline_saved_without_provenance_loads_as_unknown(tmp_path) -> None:
     assert model_version == 2
     assert restored.n_windows == 0
     assert restored.sample_rate == 0.0
+
+
+def test_save_baseline_leaves_no_temporary_file_behind(tmp_path) -> None:
+    sample_rate = 1000.0
+    baseline = fit_baseline([_sine(50.0, sample_rate, 200) for _ in range(3)], sample_rate)
+    path = tmp_path / "baseline.npz"
+
+    save_baseline(path, baseline, model_version=1)
+
+    assert sorted(entry.name for entry in tmp_path.iterdir()) == ["baseline.npz"]
+
+
+def test_save_baseline_replaces_an_existing_file_with_the_new_one(tmp_path) -> None:
+    sample_rate = 1000.0
+    path = tmp_path / "baseline.npz"
+    save_baseline(path, fit_baseline([_sine(50.0, sample_rate, 200) for _ in range(3)], sample_rate), model_version=1)
+    save_baseline(path, fit_baseline([_sine(80.0, sample_rate, 200) for _ in range(4)], sample_rate), model_version=2)
+
+    restored, model_version = load_baseline(path)
+
+    assert model_version == 2
+    assert restored.n_windows == 4
+
+
+def test_a_save_that_fails_midway_keeps_the_previous_baseline(tmp_path, monkeypatch) -> None:
+    # a power cut or a full disk in the middle of the write used to leave a truncated
+    # file that load_baseline() refused, losing the last good baseline with it
+    sample_rate = 1000.0
+    path = tmp_path / "baseline.npz"
+    save_baseline(path, fit_baseline([_sine(50.0, sample_rate, 200) for _ in range(3)], sample_rate), model_version=1)
+    before = path.read_bytes()
+
+    def interrupted(fh, **arrays):
+        fh.write(b"PK\x03\x04 half of a new baseline")
+        raise OSError("disk full")
+
+    monkeypatch.setattr(np, "savez", interrupted)
+    with pytest.raises(OSError):
+        save_baseline(path, fit_baseline([_sine(80.0, sample_rate, 200) for _ in range(4)], sample_rate), model_version=2)
+    monkeypatch.undo()
+
+    assert path.read_bytes() == before
+    restored, model_version = load_baseline(path)
+    assert model_version == 1 and restored.n_windows == 3
+    assert sorted(entry.name for entry in tmp_path.iterdir()) == ["baseline.npz"]

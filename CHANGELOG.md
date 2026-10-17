@@ -18,6 +18,13 @@ semantic-versioning judgment calls:
 
 ---
 
+## [0.1.4] - Durable baseline file, idle connections dropped, Portuguese README
+
+- **Durable baseline file:** `--baseline-path` wrote the fitted baseline in place, so a power cut or a full disk in the middle of the write (a CM5 is power-cycled) left a truncated file that `load_baseline()` refused, and the last good baseline was lost with it. The file is now written next to its target, flushed and fsynced, then renamed over it (and the directory synced where the OS allows), so the previous baseline stays intact until the new one is complete; a failed write removes its temporary file and leaves the old one untouched.
+- **Idle connections are dropped:** the HTTP handler had no connection timeout, so a client that opened a connection and sent nothing (or sent a body one byte at a time) held a handler thread forever. A silent client is now dropped after 15 seconds; the limit covers socket I/O only, never the time a request spends computing.
+- **Tests:** new tests cover the atomic save (no temporary file left, replacing an existing file, a write that fails midway keeps the previous baseline) and the dropped idle connection, 67 in total.
+- **Docs:** the README test count is corrected and a README in Portuguese (`README_por.md`) joins the other translations.
+
 ## [0.1.3]
 
 - **Calibration provenance:** a fitted `Baseline` now records how many

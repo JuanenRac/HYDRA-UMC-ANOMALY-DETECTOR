@@ -13,6 +13,7 @@ rather than hardcoded.
 """
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -99,17 +100,47 @@ def save_baseline(path: Path, baseline: Baseline, model_version: int) -> None:
     file object rather than handed a bare path, since `np.savez()` would
     otherwise silently append a `.npz` suffix to a path that doesn't
     already end in one.
+
+    The write is atomic and durable: the new file is written next to the
+    target, flushed and fsynced, then renamed over it. It used to be
+    written in place, so a power cut mid-write (a CM5 is power-cycled)
+    left a truncated file that `load_baseline()` refused, and the last
+    good baseline was lost with it; now the old file stays intact until
+    the new one is complete.
     """
-    with open(path, "wb") as fh:
-        np.savez(
-            fh,
-            freqs=baseline.freqs,
-            mean=baseline.mean,
-            std=baseline.std,
-            model_version=np.asarray(model_version),
-            n_windows=np.asarray(baseline.n_windows),
-            sample_rate=np.asarray(baseline.sample_rate),
-        )
+    path = Path(path)
+    temporary = path.with_name(path.name + ".tmp")
+    try:
+        with open(temporary, "wb") as fh:
+            np.savez(
+                fh,
+                freqs=baseline.freqs,
+                mean=baseline.mean,
+                std=baseline.std,
+                model_version=np.asarray(model_version),
+                n_windows=np.asarray(baseline.n_windows),
+                sample_rate=np.asarray(baseline.sample_rate),
+            )
+            fh.flush()
+            os.fsync(fh.fileno())
+        os.replace(temporary, path)
+    except BaseException:
+        try:
+            temporary.unlink()
+        except OSError:
+            pass
+        raise
+    # make the rename itself durable (POSIX; a directory cannot be opened this way on Windows)
+    try:
+        directory = os.open(path.parent, os.O_RDONLY)
+    except OSError:
+        return
+    try:
+        os.fsync(directory)
+    except OSError:
+        pass
+    finally:
+        os.close(directory)
 
 
 def load_baseline(path: Path) -> tuple[Baseline, int]:
