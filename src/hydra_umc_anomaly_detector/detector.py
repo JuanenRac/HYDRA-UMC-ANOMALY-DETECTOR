@@ -24,7 +24,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from .baseline import Baseline, fit_baseline
+from .baseline import Baseline, BaselineError, fit_baseline
 from .fft import compute_spectrum
 
 
@@ -51,16 +51,17 @@ class AnomalyDetector:
         signal's max-z naturally runs higher than a single bin's own
         "4 sigma is rare" intuition would suggest, especially with a
         modest number of training windows (per-bin std itself is
-        noisily estimated from few samples). Empirically verified against
-        this project's own synthetic healthy-vs-faulty test fixtures
-        (see tests/test_detector.py): with as few as 10 training windows,
-        genuinely healthy readings scored up to ~5.3, while a readings
-        carrying a real synthetic fault component scored in the
-        hundreds - a real, wide margin, not a knife-edge tuning. 10.0 sits
-        safely above the observed healthy ceiling with room to spare.
-        Tunable per deployment once there's real field data to tune it
-        against - not claimed to be the universally correct number for
-        every motor.
+        noisily estimated from few samples). Checked ONLY against this
+        project's own synthetic healthy-vs-faulty test fixtures (see
+        tests/test_detector.py): a fixed amplitude, a fixed phase and a
+        frequency that falls exactly on a bin. With as few as 10 training
+        windows, healthy readings scored up to ~5.3 there, while readings
+        carrying a synthetic fault component scored in the hundreds. Real
+        machines vary their speed, load (amplitude) and phase, none of which
+        the fixtures vary, so on real data the margin can disappear: the
+        threshold must be recalibrated against healthy field recordings
+        before any alarm is trusted. It is not claimed to be the right
+        number for any real motor.
         """
         if sample_rate <= 0:
             raise ValueError("sample_rate must be positive")
@@ -75,7 +76,17 @@ class AnomalyDetector:
         self._model_version = 0
 
     def fit(self, healthy_windows: list[np.ndarray] | list[list[float]]) -> None:
-        self._baseline = fit_baseline(healthy_windows, self._sample_rate)
+        self.adopt(self.prepare_fit(healthy_windows))
+
+    def prepare_fit(self, healthy_windows: list[np.ndarray] | list[list[float]]) -> Baseline:
+        """Computes a new baseline WITHOUT installing it, so a caller that
+        shares this detector between threads can do the heavy FFT work
+        outside its lock and only swap the result in (`adopt`) inside it."""
+        return fit_baseline(healthy_windows, self._sample_rate)
+
+    def adopt(self, baseline: Baseline) -> None:
+        """Installs a baseline from `prepare_fit` as the next model version."""
+        self._baseline = baseline
         self._model_version += 1
 
     def restore(self, baseline: Baseline, model_version: int) -> None:
@@ -88,6 +99,14 @@ class AnomalyDetector:
         number."""
         if model_version < 0:
             raise ValueError(f"model_version must not be negative, got {model_version}")
+        # A baseline records the sampling rate it was fitted at (0 = unknown, an
+        # older file). Restoring it under another rate would compare bins that
+        # do not correspond and report a false frequency.
+        if baseline.sample_rate and abs(baseline.sample_rate - self._sample_rate) > 1e-9:
+            raise BaselineError(
+                f"the baseline was fitted at {baseline.sample_rate:g} Hz but this detector samples at "
+                f"{self._sample_rate:g} Hz; start with --sample-rate {baseline.sample_rate:g} or refit"
+            )
         self._baseline = baseline
         self._model_version = model_version
 

@@ -16,7 +16,7 @@
 
 ---
 
-> **Verificação de honestidade - o que realmente funciona hoje:** o espetro FFT (`fft.py`), a linha de base estatística por faixa (`baseline.py`), o detetor de anomalias por z-score máximo (`detector.py`), as métricas de precisão/recuperação/F1 sobre um conjunto etiquetado (`metrics.py`), a deteção de deriva por média móvel (`drift.py`), o cliente HTTP real do HYDRA-UMC-DATALAKE (`datalake_client.py`) e a API JSON/HTTP simples (`api.py`) são reais e testados (67 testes a passar: `pytest tests/` - `test_fft.py`, `test_baseline.py`, `test_detector.py`, `test_metrics.py`, `test_drift.py`, `test_datalake_client.py`, `test_api.py`). "Com IA" e "Modelos de aprendizagem" abaixo descrevem processamento de sinal real mais uma linha de base estatística ajustada a partir de janelas conhecidas como saudáveis - não uma rede neuronal treinada, nem aprendizagem contínua em segundo plano: uma linha de base ajusta-se uma vez, no arranque a partir do histórico real do DATALAKE ou através de uma chamada explícita a `POST /baseline/fit`, e mantém-se exatamente nessa versão do modelo até ao ajuste explícito seguinte (veja o próprio versionamento de modelos do `detector.py`). As Fases 3 e 4 do ROTEIRO abaixo (aprendizagem não supervisionada, análise acústica) são totalmente aspiracionais - não existe código para nenhuma delas neste repositório. Veja o `CHANGELOG.md` para saber exatamente o que foi entregue até agora.
+> **Verificação de honestidade - o que realmente funciona hoje:** o espetro FFT (`fft.py`), a linha de base estatística por faixa (`baseline.py`), o detetor de anomalias por z-score máximo (`detector.py`), as métricas de precisão/recuperação/F1 sobre um conjunto etiquetado (`metrics.py`), a deteção de deriva por média móvel (`drift.py`), o cliente HTTP real do HYDRA-UMC-DATALAKE (`datalake_client.py`) e a API JSON/HTTP simples (`api.py`) são reais e testados (73 testes a passar: `pytest tests/` - `test_fft.py`, `test_baseline.py`, `test_detector.py`, `test_metrics.py`, `test_drift.py`, `test_datalake_client.py`, `test_api.py`). "Com IA" e "Modelos de aprendizagem" abaixo descrevem processamento de sinal real mais uma linha de base estatística ajustada a partir de janelas conhecidas como saudáveis - não uma rede neuronal treinada, nem aprendizagem contínua em segundo plano: uma linha de base ajusta-se uma vez, no arranque a partir do histórico real do DATALAKE ou através de uma chamada explícita a `POST /baseline/fit`, e mantém-se exatamente nessa versão do modelo até ao ajuste explícito seguinte (veja o próprio versionamento de modelos do `detector.py`). As Fases 3 e 4 do ROTEIRO abaixo (aprendizagem não supervisionada, análise acústica) são totalmente aspiracionais - não existe código para nenhuma delas neste repositório. Veja o `CHANGELOG.md` para saber exatamente o que foi entregue até agora.
 
 ---
 
@@ -130,7 +130,7 @@ histórico real do HYDRA-UMC-DATALAKE em vez de colar matrizes à mão:
 
 ```bash
 # Persistir cada ajuste em disco e restaurá-lo automaticamente no arranque seguinte
-./run.sh --port 8097 --baseline-path /opt/hydra-umc/anomaly-detector/data/baseline.npz
+./run.sh --port 8097 --baseline-path /var/lib/hydra-umc-anomaly-detector/baseline.npz
 
 # Ajustar uma linha de base nova no arranque a partir do histórico real do DATALAKE e depois persisti-la
 ./run.sh --port 8097 --baseline-path baseline.npz \

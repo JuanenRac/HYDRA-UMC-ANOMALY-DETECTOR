@@ -290,3 +290,40 @@ def test_a_client_that_sends_nothing_is_dropped_instead_of_holding_a_thread(monk
         server.shutdown()
         server.server_close()
         thread.join(timeout=5)
+
+
+def test_non_numeric_window_elements_are_a_400_not_a_dropped_connection(server_url: str) -> None:
+    status, body = _post(f"{server_url}/baseline/fit", {"windows": [{"a": 1}, {"b": 2}]})
+    assert status == 400 and "error" in body
+
+    _post(f"{server_url}/baseline/fit", {"windows": [_sine(50.0) for _ in range(5)]})
+    status, body = _post(f"{server_url}/detect", {"window": [{"a": 1}] * N_SAMPLES})
+    assert status == 400 and "error" in body
+
+
+def test_nan_and_infinity_constants_are_refused_in_the_body(server_url: str) -> None:
+    request = urllib.request.Request(
+        f"{server_url}/drift/init",
+        data=b'{"baselineScores": [1.0, 2.0], "windowSize": Infinity}',
+        method="POST",
+        headers={"Content-Type": "application/json"},
+    )
+    try:
+        urllib.request.urlopen(request)
+        raise AssertionError("expected a 400")
+    except urllib.error.HTTPError as error:
+        assert error.code == 400
+
+
+def test_drift_monitor_must_be_reinitialized_after_a_refit(server_url: str) -> None:
+    windows = [_sine(50.0) for _ in range(5)]
+    assert _post(f"{server_url}/baseline/fit", {"windows": windows})[0] == 200
+    assert _post(f"{server_url}/drift/init", {"baselineScores": [1.0, 1.1, 0.9], "windowSize": 2})[0] == 200
+    assert _post(f"{server_url}/drift/observe", {"score": 1.0})[0] == 200
+
+    assert _post(f"{server_url}/baseline/fit", {"windows": windows})[0] == 200
+    status, body = _post(f"{server_url}/drift/observe", {"score": 1.0})
+    assert status == 409 and "refitted" in body["error"]
+
+    assert _post(f"{server_url}/drift/init", {"baselineScores": [1.0, 1.1, 0.9], "windowSize": 2})[0] == 200
+    assert _post(f"{server_url}/drift/observe", {"score": 1.0})[0] == 200

@@ -76,3 +76,16 @@ def test_real_precision_and_recall_over_the_synthetic_healthy_faulty_fixture() -
     assert result.precision == 1.0
     assert result.recall == 1.0
     assert result.f1 == 1.0
+
+
+def test_a_detector_that_never_alarms_has_perfect_precision_but_zero_recall_and_no_false_positives() -> None:
+    result = precision_recall([False, False, False, False], [True, False, False, True])
+    assert result.precision == 1.0
+    assert result.recall == 0.0
+    assert result.false_positive_rate == 0.0
+    assert result.specificity == 1.0
+
+
+def test_false_positive_rate_counts_alarms_on_healthy_samples() -> None:
+    result = precision_recall([True, True, False, False], [False, False, False, False])
+    assert result.false_positive_rate == 0.5

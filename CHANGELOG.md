@@ -14,9 +14,18 @@ semantic-versioning judgment calls:
 
 - `PATCH` +1 on every build
 - when `PATCH` would exceed 9, it resets to 0 and `MINOR` +1 instead (e.g. `0.0.9` -> `0.1.0`, never `0.0.10`)
-- the same carry cascades into `MAJOR` if `MINOR` would exceed 9
+- `bump_version.py` never touches `MAJOR`; the shared `bump_manifest_version.py` carries `MINOR` into `MAJOR` if needed
 
 ---
+
+## [0.1.5] - Bad input gets an answer, a baseline stays tied to its sample rate, a writable state directory
+
+- **HTTP service:** a window with non-numeric elements (`{"windows": [{"a": 1}]}`) or an infinite `windowSize` made the handler raise and the server closed the connection without any reply; both are now a clean 400, and `NaN`/`Infinity` constants in a request body are refused. A refit no longer blocks scoring while its FFTs run (the heavy work happens before taking the lock).
+- **Drift monitor:** it is tied to the model it was initialized for; after a refit `/drift/observe` answers 409 until `/drift/init` is called again, instead of comparing new scores with the previous model's reference.
+- **Sample rate:** restoring a saved baseline under a different `--sample-rate` is refused with a clear message (it used to compare bins that do not correspond and report a false frequency).
+- **Persistence:** a failure to save the fitted baseline at startup is a one-line error instead of a traceback, and the systemd unit gets `StateDirectory=hydra-umc-anomaly-detector` and passes `--baseline-path /var/lib/hydra-umc-anomaly-detector/baseline.npz`, because `ProtectSystem=strict` made the path in the README unwritable.
+- **Metrics:** `false_positive_rate` and `specificity` next to precision, which is perfect for a detector that never raises an alarm.
+- **Docs:** the threshold docstring now says it was checked only on fixtures with fixed amplitude, phase and bin-exact frequency and must be recalibrated on real recordings; the API reference lists `calibrationWindows`, the 500 on a failed save and the new rules; the changelog no longer claims the version script carries into MAJOR; the README uses the writable baseline path (73 tests).
 
 ## [0.1.4] - Durable baseline file, idle connections dropped, Portuguese README
 

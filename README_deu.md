@@ -16,7 +16,7 @@
 
 ---
 
-> **Ehrlichkeitscheck - was heute wirklich läuft:** das FFT-Spektrum (`fft.py`), die statistische Baseline pro Bin (`baseline.py`), der Max-Z-Score-Anomaliedetektor (`detector.py`), die Precision/Recall/F1-Metriken über eine gelabelte Fixture (`metrics.py`), die Drift-Erkennung per gleitendem Mittelwert (`drift.py`), der echte HYDRA-UMC-DATALAKE-HTTP-Client (`datalake_client.py`) und die einfache JSON/HTTP-API (`api.py`) sind real und getestet (67 bestehende Tests: `pytest tests/` - `test_fft.py`, `test_baseline.py`, `test_detector.py`, `test_metrics.py`, `test_drift.py`, `test_datalake_client.py`, `test_api.py`). „AI-driven" und „Learning Models" weiter unten beschreiben echte Signalverarbeitung plus eine statistische Baseline, die aus bekannt gesunden Fenstern angepasst wird - kein trainiertes neuronales Netz, und kein kontinuierliches Lernen im Hintergrund: eine Baseline wird einmalig angepasst, entweder beim Start aus dem echten DATALAKE-Verlauf oder über einen expliziten `POST /baseline/fit`-Aufruf, und bleibt genau diese Modellversion bis zur nächsten expliziten Neuanpassung (siehe die eigene Modellversionierung von `detector.py`). Die Phasen 3 und 4 der ROADMAP weiter unten (unüberwachtes Lernen, akustische Analyse) sind vollständig aspirativ - für keine der beiden existiert in diesem Repository bisher Code. Siehe `CHANGELOG.md` für das, was bisher genau ausgeliefert wurde.
+> **Ehrlichkeitscheck - was heute wirklich läuft:** das FFT-Spektrum (`fft.py`), die statistische Baseline pro Bin (`baseline.py`), der Max-Z-Score-Anomaliedetektor (`detector.py`), die Precision/Recall/F1-Metriken über eine gelabelte Fixture (`metrics.py`), die Drift-Erkennung per gleitendem Mittelwert (`drift.py`), der echte HYDRA-UMC-DATALAKE-HTTP-Client (`datalake_client.py`) und die einfache JSON/HTTP-API (`api.py`) sind real und getestet (73 bestehende Tests: `pytest tests/` - `test_fft.py`, `test_baseline.py`, `test_detector.py`, `test_metrics.py`, `test_drift.py`, `test_datalake_client.py`, `test_api.py`). „AI-driven" und „Learning Models" weiter unten beschreiben echte Signalverarbeitung plus eine statistische Baseline, die aus bekannt gesunden Fenstern angepasst wird - kein trainiertes neuronales Netz, und kein kontinuierliches Lernen im Hintergrund: eine Baseline wird einmalig angepasst, entweder beim Start aus dem echten DATALAKE-Verlauf oder über einen expliziten `POST /baseline/fit`-Aufruf, und bleibt genau diese Modellversion bis zur nächsten expliziten Neuanpassung (siehe die eigene Modellversionierung von `detector.py`). Die Phasen 3 und 4 der ROADMAP weiter unten (unüberwachtes Lernen, akustische Analyse) sind vollständig aspirativ - für keine der beiden existiert in diesem Repository bisher Code. Siehe `CHANGELOG.md` für das, was bisher genau ausgeliefert wurde.
 
 ---
 
@@ -131,7 +131,7 @@ Arrays von Hand einzufügen:
 
 ```bash
 # Jede Anpassung auf die Festplatte persistieren und beim nächsten Start automatisch wiederherstellen
-./run.sh --port 8097 --baseline-path /opt/hydra-umc/anomaly-detector/data/baseline.npz
+./run.sh --port 8097 --baseline-path /var/lib/hydra-umc-anomaly-detector/baseline.npz
 
 # Eine neue Baseline beim Start aus dem echten DATALAKE-Verlauf anpassen und dann persistieren
 ./run.sh --port 8097 --baseline-path baseline.npz \

@@ -44,7 +44,12 @@ def _read_json_body(handler: BaseHTTPRequestHandler) -> dict:
             handler.rfile.read(length)
         raise ValueError(f"request body must contain 0-{MAX_BODY_BYTES} bytes")
     raw = handler.rfile.read(length) if length else b"{}"
-    return json.loads(raw)
+    return json.loads(raw, parse_constant=_reject_json_constant)
+
+
+def _reject_json_constant(name: str) -> float:
+    # json.loads would otherwise accept NaN / Infinity / -Infinity
+    raise ValueError(f"{name} is not a valid JSON number")
 
 
 def _write_json(handler: BaseHTTPRequestHandler, status: int, payload: object) -> None:
@@ -91,8 +96,11 @@ class Handler(BaseHTTPRequestHandler):
             _write_json(self, 400, {"error": f"invalid request: {e}"})
             return
         try:
+            # the FFTs run outside the lock, so a big fit never blocks /detect;
+            # only swapping the model in (and saving it) happens inside it
+            prepared = self.server.detector.prepare_fit(windows)
             with self.server.lock:
-                self.server.detector.fit(windows)
+                self.server.detector.adopt(prepared)
                 if self.server.baseline_path is not None:
                     # The fitted baseline used to live only in memory -
                     # persist it now, inside the
@@ -100,7 +108,7 @@ class Handler(BaseHTTPRequestHandler):
                     # /detect never observes a fit that hasn't actually
                     # been saved yet.
                     save_baseline(self.server.baseline_path, self.server.detector.baseline, self.server.detector.model_version)
-        except (BaselineError, ValueError) as e:
+        except (BaselineError, ValueError, TypeError, OverflowError) as e:
             # BaselineError covers fit_baseline()'s own checks (too few
             # windows, mismatched lengths); the plain ValueError alongside
             # it is what compute_spectrum() raises for a bad window itself
@@ -135,7 +143,7 @@ class Handler(BaseHTTPRequestHandler):
         except NotFittedError as e:
             _write_json(self, 409, {"error": str(e)})
             return
-        except (BaselineError, ValueError) as e:
+        except (BaselineError, ValueError, TypeError, OverflowError) as e:
             # Same reasoning as _handle_fit above: score() can raise
             # BaselineError (bin-count mismatch against the fitted
             # baseline) or a plain ValueError straight out of
@@ -168,24 +176,33 @@ class Handler(BaseHTTPRequestHandler):
             if "driftRatioThreshold" in body:
                 kwargs["drift_ratio_threshold"] = float(body["driftRatioThreshold"])
             monitor = DriftMonitor([float(s) for s in baseline_scores], **kwargs)
-        except (KeyError, ValueError, TypeError, json.JSONDecodeError, DriftMonitorError) as e:
+        except (KeyError, ValueError, TypeError, OverflowError, json.JSONDecodeError, DriftMonitorError) as e:
             _write_json(self, 400, {"error": f"invalid drift monitor request: {e}"})
             return
         with self.server.lock:
             self.server.drift_monitor = monitor
+            # the reference scores belong to the model that exists right now
+            self.server.drift_model_version = self.server.detector.model_version
         _write_json(self, 200, {"status": "initialized", "baselineMeanScore": monitor.baseline_mean_score})
 
     def _handle_drift_observe(self) -> None:
         try:
             body = _read_json_body(self)
             score = float(body["score"])
-        except (KeyError, ValueError, TypeError, json.JSONDecodeError) as e:
+        except (KeyError, ValueError, TypeError, OverflowError, json.JSONDecodeError) as e:
             _write_json(self, 400, {"error": f"invalid request: {e}"})
             return
         with self.server.lock:
             monitor = self.server.drift_monitor
             if monitor is None:
                 _write_json(self, 409, {"error": "drift monitor not initialized - call POST /drift/init first"})
+                return
+            if self.server.drift_model_version != self.server.detector.model_version:
+                _write_json(
+                    self,
+                    409,
+                    {"error": "the baseline was refitted since the drift monitor was initialized - call POST /drift/init again"},
+                )
                 return
             try:
                 report = monitor.observe(score)
@@ -230,6 +247,7 @@ class DetectorServer(ThreadingHTTPServer):
         super().__init__(address, Handler)
         self.detector = detector
         self.drift_monitor: DriftMonitor | None = None
+        self.drift_model_version = 0
         self.lock = threading.Lock()
         # Optional. None (the default) means every existing
         # behavior is unchanged: POST /baseline/fit only ever updated

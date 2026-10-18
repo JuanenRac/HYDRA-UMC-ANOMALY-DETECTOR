@@ -14,13 +14,15 @@ User=hydra-umc-anomaly
 Group=hydra-umc-anomaly
 WorkingDirectory=/opt/hydra-umc/anomaly-detector
 Environment=PYTHONPATH=/opt/hydra-umc/anomaly-detector/src
-ExecStart=/usr/bin/python3 -m hydra_umc_anomaly_detector.main --addr 127.0.0.1 --port 8097
+ExecStart=/usr/bin/python3 -m hydra_umc_anomaly_detector.main --addr 127.0.0.1 --port 8097 --baseline-path /var/lib/hydra-umc-anomaly-detector/baseline.npz
 Restart=on-failure
 RestartSec=5
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectHome=true
 ProtectSystem=strict
+# /var/lib/hydra-umc-anomaly-detector, writable for the saved baseline
+StateDirectory=hydra-umc-anomaly-detector
 RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
 
 # A real, initial cgroup memory ceiling - conservative defaults, meant to be refined once real telemetry from this service running on the CM5 exists, never removed back to unlimited.

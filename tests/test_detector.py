@@ -112,3 +112,20 @@ def test_restore_rejects_a_negative_model_version() -> None:
 
     with pytest.raises(ValueError):
         detector.restore(source.baseline, model_version=-1)
+
+
+def test_restoring_a_baseline_fitted_at_another_sample_rate_is_refused() -> None:
+    import numpy as np
+    import pytest
+
+    from hydra_umc_anomaly_detector.baseline import BaselineError
+
+    t = np.arange(200) / 1000.0
+    windows = [list(np.sin(2 * np.pi * 50.0 * t)) for _ in range(5)]
+    fitted = AnomalyDetector(sample_rate=1000.0)
+    fitted.fit(windows)
+
+    other = AnomalyDetector(sample_rate=2000.0)
+    with pytest.raises(BaselineError, match="fitted at 1000 Hz"):
+        other.restore(fitted.baseline, 1)
+    AnomalyDetector(sample_rate=1000.0).restore(fitted.baseline, 1)

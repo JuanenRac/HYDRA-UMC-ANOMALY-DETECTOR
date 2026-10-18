@@ -33,6 +33,19 @@ class PrecisionRecall:
         return self.true_positives / denominator if denominator else 1.0
 
     @property
+    def false_positive_rate(self) -> float:
+        """Of everything genuinely healthy, the fraction wrongly flagged. A
+        detector that never alarms has a perfect `precision` (nothing flagged,
+        nothing wrong) - read this and `recall` too before trusting it."""
+        denominator = self.false_positives + self.true_negatives
+        return self.false_positives / denominator if denominator else 0.0
+
+    @property
+    def specificity(self) -> float:
+        """Of everything genuinely healthy, the fraction left alone."""
+        return 1.0 - self.false_positive_rate
+
+    @property
     def recall(self) -> float:
         """Of everything genuinely anomalous, the real fraction that was
         caught. `1.0` when nothing was genuinely anomalous - there was

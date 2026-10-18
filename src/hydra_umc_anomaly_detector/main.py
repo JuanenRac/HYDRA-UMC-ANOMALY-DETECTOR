@@ -107,14 +107,18 @@ def main(argv: list[str] | None = None) -> int:
             return 1
         print(f"[anomaly-detector] fit {len(windows)} window(s) from DATALAKE ({args.datalake_url})")
         if baseline_path is not None:
-            save_baseline(baseline_path, detector.baseline, detector.model_version)
+            try:
+                save_baseline(baseline_path, detector.baseline, detector.model_version)
+            except OSError as e:
+                print(f"error: could not save the baseline to {baseline_path}: {e}", file=sys.stderr)
+                return 1
             print(f"[anomaly-detector] persisted fresh baseline to {baseline_path}")
     elif baseline_path is not None and baseline_path.is_file():
         try:
             baseline, model_version = load_baseline(baseline_path)
             detector.restore(baseline, model_version)
             print(f"[anomaly-detector] restored baseline from {baseline_path} (model version {model_version})")
-        except BaselineError as e:
+        except (BaselineError, ValueError) as e:
             print(f"error: could not restore baseline from {baseline_path}: {e}", file=sys.stderr)
             return 1
 
