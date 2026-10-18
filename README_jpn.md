@@ -20,6 +20,17 @@
 
 ---
 
+## 📋 ひと目で
+
+| | |
+|---|---|
+| バージョン | `0.1.6` |
+| 成熟度 | 確立 |
+| テスト | 73 (`pytest tests/`) |
+| 技術 | Python / FFT / statistical baseline detection |
+| 対象 | HYDRA-UMC セルの Raspberry Pi CM5 |
+| 実機での確認 | まだです：このバージョンについて実機での動作記録はありません |
+
 ## 1. 🛠️ 技術概要
 
 **HYDRA-UMC-ANOMALY-DETECTOR** は、ロボットの健全性を守る積極的な

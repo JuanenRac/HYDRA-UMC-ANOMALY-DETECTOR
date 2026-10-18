@@ -20,6 +20,17 @@
 
 ---
 
+## 📋 速览
+
+| | |
+|---|---|
+| 版本 | `0.1.6` |
+| 成熟度 | 成熟 |
+| 测试 | 73 (`pytest tests/`) |
+| 技术栈 | Python / FFT / statistical baseline detection |
+| 目标 | HYDRA-UMC 工作单元的 Raspberry Pi CM5 |
+| 真实硬件 | 尚未：此版本没有在真实硬件上运行的记录 |
+
 ## 1. 🛠️ 技术概述
 
 **HYDRA-UMC-ANOMALY-DETECTOR** 是机器人健康状态的主动守护者。它使用 AI

@@ -20,6 +20,17 @@
 
 ---
 
+## 📋 Num relance
+
+| | |
+|---|---|
+| Versão | `0.1.6` |
+| Maturidade | Estabelecido |
+| Testes | 73 (`pytest tests/`) |
+| Tecnologia | Python / FFT / statistical baseline detection |
+| Destino | O Raspberry Pi CM5 de uma célula HYDRA-UMC |
+| Em hardware real | Ainda não: não há registo de execução em hardware real para esta versão |
+
 ## 1. 🛠️ VISÃO TÉCNICA GERAL
 
 O **HYDRA-UMC-ANOMALY-DETECTOR** é o guardião proativo da saúde robótica. Usa modelos de IA para analisar telemetria de alta frequência (vibrações, assinaturas de corrente dos motores e perfis térmicos) e detetar falhas antes de acontecerem.
