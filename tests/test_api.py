@@ -1,7 +1,7 @@
 # =============================================================================
 # HYDRA-UMC-ANOMALY-DETECTOR - tests/test_api.py
 # Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
-# GPL-3.0 - see LICENSE
+# GPL-3.0-or-later - see LICENSE
 # =============================================================================
 """Real HTTP round-trips against a genuine DetectorServer on an ephemeral
 loopback port - same standard as HYDRA-UMC-DATALAKE's own tests/test_api.py."""

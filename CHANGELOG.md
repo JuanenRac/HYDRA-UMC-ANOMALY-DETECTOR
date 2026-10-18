@@ -18,6 +18,11 @@ semantic-versioning judgment calls:
 
 ---
 
+## [0.1.6]
+
+- Build version synchronized with `hydra-umc.project.json` and the repository-native version source.
+- The licence is written as GPL-3.0-or-later in every header and in the package metadata.
+
 ## [0.1.5] - Bad input gets an answer, a baseline stays tied to its sample rate, a writable state directory
 
 - **HTTP service:** a window with non-numeric elements (`{"windows": [{"a": 1}]}`) or an infinite `windowSize` made the handler raise and the server closed the connection without any reply; both are now a clean 400, and `NaN`/`Infinity` constants in a request body are refused. A refit no longer blocks scoring while its FFTs run (the heavy work happens before taking the lock).

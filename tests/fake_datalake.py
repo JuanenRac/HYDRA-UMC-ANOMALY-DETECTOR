@@ -1,7 +1,7 @@
 # =============================================================================
 # HYDRA-UMC-ANOMALY-DETECTOR - tests/fake_datalake.py
 # Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
-# GPL-3.0 - see LICENSE
+# GPL-3.0-or-later - see LICENSE
 # =============================================================================
 """A real HTTP server implementing HYDRA-UMC-DATALAKE's actual GET
 /query response contract (sourceId/kind/field/timestamp/value JSON

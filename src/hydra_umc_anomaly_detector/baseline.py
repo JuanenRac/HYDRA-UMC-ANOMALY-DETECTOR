@@ -1,7 +1,7 @@
 # =============================================================================
 # HYDRA-UMC-ANOMALY-DETECTOR - src/hydra_umc_anomaly_detector/baseline.py
 # Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
-# GPL-3.0 - see LICENSE
+# GPL-3.0-or-later - see LICENSE
 # =============================================================================
 """A Baseline is the real per-frequency-bin statistical profile of a
 "healthy" motor, learned from a set of known-good signal windows - the

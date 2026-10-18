@@ -1,7 +1,7 @@
 # =============================================================================
 # HYDRA-UMC-ANOMALY-DETECTOR - tests/test_drift.py
 # Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
-# GPL-3.0 - see LICENSE
+# GPL-3.0-or-later - see LICENSE
 # =============================================================================
 """Real simulated drift: a slowly worsening fault component fed through
 DriftMonitor, proving it can flag a real degrading trend even while

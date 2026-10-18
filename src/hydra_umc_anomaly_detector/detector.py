@@ -1,7 +1,7 @@
 # =============================================================================
 # HYDRA-UMC-ANOMALY-DETECTOR - src/hydra_umc_anomaly_detector/detector.py
 # Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
-# GPL-3.0 - see LICENSE
+# GPL-3.0-or-later - see LICENSE
 # =============================================================================
 """AnomalyDetector: the real classical-statistics detector this v0 ships
 - fit a Baseline from healthy windows, score a live window by how many

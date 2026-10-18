@@ -9,7 +9,7 @@
 ### 🧠 AI 驱动的预测性维护与电机振动分析
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Licencia-GPL%203.0-blue.svg" alt="GPL 3.0">
+  <img src="https://img.shields.io/badge/Licencia-GPL%203.0--or--later-blue.svg" alt="GPL 3.0 or later">
   <img src="https://img.shields.io/badge/Tech-Python%20%2F%20NumPy-blueviolet.svg" alt="Tech">
   <img src="https://img.shields.io/badge/Method-FFT%20%2F%20Spectrogram-orange.svg" alt="Method">
 </p>
@@ -278,4 +278,4 @@ python -m pytest tests/ -v   # fft.py（正确找到已知正弦波的峰值频�
 📺 [youtube.com/@electrohobby3d](https://youtube.com/@electrohobby3d)
 
 ## 📜 许可证
-GPL-3.0 —— 详见 LICENSE。
+GPL-3.0-or-later —— 详见 LICENSE。

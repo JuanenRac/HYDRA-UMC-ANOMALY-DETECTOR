@@ -1,7 +1,7 @@
 # =============================================================================
 # HYDRA-UMC-ANOMALY-DETECTOR - src/hydra_umc_anomaly_detector/datalake_client.py
 # Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
-# GPL-3.0 - see LICENSE
+# GPL-3.0-or-later - see LICENSE
 # =============================================================================
 """A real HTTP client for HYDRA-UMC-DATALAKE's own API
 (src/hydra_umc_datalake/api.py). This project's own README describes running

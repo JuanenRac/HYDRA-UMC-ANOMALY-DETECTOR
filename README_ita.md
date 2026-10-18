@@ -9,7 +9,7 @@
 ### 🧠 Manutenzione predittiva guidata dall'IA e analisi delle vibrazioni del motore
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Licenza-GPL%203.0-blue.svg" alt="GPL 3.0">
+  <img src="https://img.shields.io/badge/Licenza-GPL%203.0--or--later-blue.svg" alt="GPL 3.0 or later">
   <img src="https://img.shields.io/badge/Tech-Python%20%2F%20NumPy-blueviolet.svg" alt="Tech">
   <img src="https://img.shields.io/badge/Metodo-FFT%20%2F%20Spectrogram-orange.svg" alt="Method">
 </p>
@@ -281,4 +281,4 @@ Questo progetto fa parte dell'ecosistema robotico HYDRA-UMC dello stesso autore 
 📺 [youtube.com/@electrohobby3d](https://youtube.com/@electrohobby3d)
 
 ## 📜 LICENZA
-GPL-3.0 - Vedere LICENSE per i dettagli.
+GPL-3.0-or-later - Vedere LICENSE per i dettagli.

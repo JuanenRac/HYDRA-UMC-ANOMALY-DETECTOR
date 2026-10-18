@@ -1,7 +1,7 @@
 # =============================================================================
 # HYDRA-UMC-ANOMALY-DETECTOR - src/hydra_umc_anomaly_detector/__init__.py
 # Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
-# GPL-3.0 - see LICENSE
+# GPL-3.0-or-later - see LICENSE
 # =============================================================================
 """HYDRA-UMC-ANOMALY-DETECTOR - AI-driven predictive maintenance.
 
@@ -11,4 +11,4 @@ before they happen. Child of HYDRA-UMC-DATALAKE in the Data & Analytics
 category.
 """
 
-__version__ = "0.1.5"
+__version__ = "0.1.6"

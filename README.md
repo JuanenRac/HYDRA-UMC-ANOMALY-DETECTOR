@@ -9,7 +9,7 @@
 ### 🧠 AI-Driven Predictive Maintenance & Motor Vibration Analysis
 
 <p align="center">
-  <img src="https://img.shields.io/badge/License-GPL%203.0-blue.svg" alt="GPL 3.0">
+  <img src="https://img.shields.io/badge/License-GPL%203.0--or--later-blue.svg" alt="GPL 3.0 or later">
   <img src="https://img.shields.io/badge/Tech-Python%20%2F%20NumPy-blueviolet.svg" alt="Tech">
   <img src="https://img.shields.io/badge/Method-FFT%20%2F%20Spectrogram-orange.svg" alt="Method">
 </p>
@@ -281,4 +281,4 @@ This project is part of the HYDRA-UMC robotics ecosystem by the same author (Jua
 📺 [youtube.com/@electrohobby3d](https://youtube.com/@electrohobby3d)
 
 ## 📜 LICENSE
-GPL-3.0 - See LICENSE for details.
+GPL-3.0-or-later - See LICENSE for details.

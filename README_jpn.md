@@ -9,7 +9,7 @@
 ### 🧠 AI 駆動の予知保全とモーター振動分析
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Licencia-GPL%203.0-blue.svg" alt="GPL 3.0">
+  <img src="https://img.shields.io/badge/Licencia-GPL%203.0--or--later-blue.svg" alt="GPL 3.0 or later">
   <img src="https://img.shields.io/badge/Tech-Python%20%2F%20NumPy-blueviolet.svg" alt="Tech">
   <img src="https://img.shields.io/badge/Method-FFT%20%2F%20Spectrogram-orange.svg" alt="Method">
 </p>
@@ -286,4 +286,4 @@ python -m pytest tests/ -v   # fft.py(既知の正弦波のピーク周波数が
 📺 [youtube.com/@electrohobby3d](https://youtube.com/@electrohobby3d)
 
 ## 📜 ライセンス
-GPL-3.0 —— 詳細は LICENSE を参照してください。
+GPL-3.0-or-later —— 詳細は LICENSE を参照してください。

@@ -9,7 +9,7 @@
 ### 🧠 Mantenimiento Predictivo Basado en IA y Análisis de Vibración de Motores
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Licencia-GPL%203.0-blue.svg" alt="GPL 3.0">
+  <img src="https://img.shields.io/badge/Licencia-GPL%203.0--or--later-blue.svg" alt="GPL 3.0 or later">
   <img src="https://img.shields.io/badge/Tecnología-Python%20%2F%20NumPy-blueviolet.svg" alt="Tech">
   <img src="https://img.shields.io/badge/Método-FFT%20%2F%20Espectrograma-orange.svg" alt="Method">
 </p>
@@ -280,4 +280,4 @@ Este proyecto es parte del ecosistema de robótica HYDRA-UMC del mismo autor (Ju
 📺 [youtube.com/@electrohobby3d](https://youtube.com/@electrohobby3d)
 
 ## 📜 LICENCIA
-GPL-3.0 - Ver archivo LICENSE para más detalles.
+GPL-3.0-or-later - Ver archivo LICENSE para más detalles.
