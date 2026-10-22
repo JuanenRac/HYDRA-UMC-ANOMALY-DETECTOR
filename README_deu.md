@@ -102,9 +102,9 @@ HYDRA-UMC-ANOMALY-DETECTOR/
 │   └── ci_validate.py       # Manifest-/CHANGELOG-/Doku-Validierung, von der CI genutzt
 ├── build/                   # Build-Ausgabe (von git ignoriert)
 ├── pyproject.toml           # Paketmetadaten, Version, Abhängigkeiten (numpy)
-├── bump_version.py          # Versionserhöhung im "Kilometerzähler"-Stil (vom Build ausgeführt)
+├── bump_version.py          # Versionserhöhung im Kilometerzähler-Stil (nur vom expliziten `bump`-Befehl ausgeführt)
 ├── bump_manifest_version.py # Synchronisiert die Version von hydra-umc.project.json mit der nativen (--sync)
-├── build.sh / build.bat     # Echter Build: venv + editierbare Installation + Bump + Tests
+├── build.sh / build.bat     # Echter Build: venv + editierbare Installation + Tests
 ├── run.sh / run.bat         # Echte Ausführung: startet die HTTP-API
 └── README.md
 ```
