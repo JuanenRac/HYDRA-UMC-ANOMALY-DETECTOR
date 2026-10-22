@@ -106,15 +106,6 @@ All notable changes to this project are documented here.
   This prevents an accidental or hostile client from requesting an unbounded
   read on the detector service.
 
-## Documentation - Real HTTP API reference
-
-- **`docs/API.md`** (new) - every real endpoint (`POST /baseline/fit`,
-  `POST /detect`, `GET /stats`) documented from the actual handler code in
-  `api.py`: request/response bodies, status codes, and what the response
-  fields (`score`, `anomalous`, `worstBinFreqHz`) actually mean per
-  `detector.py`. Verified live against a real running server, not just
-  read from source. Documentation-only - no code changed, no version bump.
-
 ## [0.1.0]
 
 - **`--addr` now defaults to `127.0.0.1`, not `0.0.0.0`** - this server
@@ -270,3 +261,14 @@ All notable changes to this project are documented here.
 - **`pyproject.toml`** - packaging metadata, no runtime dependencies yet.
 - **`bump_version.py`** - ecosystem-standard odometer bump script.
 - **`build.sh` / `build.bat`**, **`run.sh` / `run.bat`** - venv creation, editable install, compile-check, and entry-point execution.
+
+## Earlier history
+
+### Documentation - Real HTTP API reference
+
+- **`docs/API.md`** (new) - every real endpoint (`POST /baseline/fit`,
+  `POST /detect`, `GET /stats`) documented from the actual handler code in
+  `api.py`: request/response bodies, status codes, and what the response
+  fields (`score`, `anomalous`, `worstBinFreqHz`) actually mean per
+  `detector.py`. Verified live against a real running server, not just
+  read from source. Documentation-only - no code changed, no version bump.
