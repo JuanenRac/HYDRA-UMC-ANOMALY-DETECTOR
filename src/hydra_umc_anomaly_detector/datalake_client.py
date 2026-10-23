@@ -126,6 +126,111 @@ class DatalakeClient:
         ]
 
 
+@dataclass(frozen=True)
+class WindowFetch:
+    """What fetch_windows_checked() found: the windows, and what it had to leave out to make them honest."""
+
+    windows: list[list[float]]
+    points: int  # distinct points read (after removing repeated timestamps)
+    pages: int
+    duplicates: int  # points whose timestamp repeated one already read (the first is kept)
+    gaps: int  # places where the spacing was not the one expected: the series is cut there
+    dropped_samples: int  # points that fit no complete window (the tail of each run)
+    truncated: bool  # the read stopped at max_points: there is more history than was read
+
+    def summary(self) -> str:
+        text = f"{self.points} point(s) in {self.pages} page(s) -> {len(self.windows)} window(s)"
+        if self.duplicates:
+            text += f"; {self.duplicates} repeated timestamp(s) removed"
+        if self.gaps:
+            text += f"; the series was cut at {self.gaps} irregular spacing(s), {self.dropped_samples} sample(s) left out"
+        if self.truncated:
+            text += "; STOPPED at the point limit, there is more history than was read"
+        return text
+
+
+def fetch_windows_checked(
+    client: DatalakeClient,
+    *,
+    source_id: str,
+    kind: str,
+    field: str,
+    window_size: int,
+    sample_rate: float,
+    start: int | None = None,
+    end: int | None = None,
+    page_size: int = 10000,
+    max_points: int = 200_000,
+    tolerance: float = 0.5,
+) -> WindowFetch:
+    """Like fetch_windows(), but the timestamps are looked at.
+
+    A window goes into an FFT as if its samples were evenly spaced at `sample_rate`; a series with a gap, a
+    repeated timestamp or a wandering interval gives a spectrum that describes the holes, not the machine. So:
+
+      * the read is paged (DATALAKE answers the OLDEST points first, up to `page_size`): the next page starts
+        after the last timestamp read, until a short page or `max_points`; hitting `max_points` is reported
+        (`truncated`), never silent;
+      * a repeated timestamp keeps its first point;
+      * the series is cut wherever two neighbours are not about 1/sample_rate apart (more than `tolerance` of
+        a period off, timestamps in milliseconds), and windows are made inside each uninterrupted run only.
+    """
+    if window_size <= 0:
+        raise ValueError(f"window_size must be positive, got {window_size}")
+    if sample_rate <= 0:
+        raise ValueError(f"sample_rate must be positive, got {sample_rate}")
+    if page_size <= 0 or max_points <= 0:
+        raise ValueError("page_size and max_points must be positive")
+    if not 0 <= tolerance < 1:
+        raise ValueError("tolerance must be at least 0 and below 1")
+
+    points: list[Point] = []
+    pages = 0
+    cursor = start
+    duplicates = 0
+    truncated = False
+    last_timestamp: int | None = None
+    while True:
+        page = client.query(source_id=source_id, kind=kind, field=field, start=cursor, end=end, limit=page_size)
+        pages += 1
+        for point in page:
+            if last_timestamp is not None and point.timestamp <= last_timestamp:
+                duplicates += 1  # ascending order is DATALAKE's contract: <= is a repeat
+                continue
+            points.append(point)
+            last_timestamp = point.timestamp
+        if len(page) < page_size:
+            break
+        if len(points) >= max_points:
+            truncated = True
+            break
+        cursor = page[-1].timestamp + 1
+
+    period_ms = 1000.0 / sample_rate
+    low, high = period_ms * (1.0 - tolerance), period_ms * (1.0 + tolerance)
+    runs: list[list[float]] = []
+    current: list[float] = []
+    gaps = 0
+    for index, point in enumerate(points):
+        if index and not low <= point.timestamp - points[index - 1].timestamp <= high:
+            gaps += 1
+            runs.append(current)
+            current = []
+        current.append(point.value)
+    runs.append(current)
+
+    windows: list[list[float]] = []
+    dropped = 0
+    for run in runs:
+        count = len(run) // window_size
+        windows.extend(run[i * window_size : (i + 1) * window_size] for i in range(count))
+        dropped += len(run) - count * window_size
+    return WindowFetch(
+        windows=windows, points=len(points), pages=pages, duplicates=duplicates, gaps=gaps,
+        dropped_samples=dropped, truncated=truncated,
+    )
+
+
 def fetch_windows(
     client: DatalakeClient,
     *,

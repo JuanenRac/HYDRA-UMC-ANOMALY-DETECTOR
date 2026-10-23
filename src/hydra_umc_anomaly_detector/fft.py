@@ -36,7 +36,16 @@ class Spectrum:
         return float(self.freqs[int(np.argmax(self.magnitudes))])
 
 
-def compute_spectrum(signal: np.ndarray | list[float], sample_rate: float) -> Spectrum:
+# "none" is the original behaviour (the raw signal goes into the FFT, magnitudes are not normalised): a component that
+# does not fall on a whole bin leaks into every other bin, and a baseline made this way only holds for the same
+# conditions. "hann" removes the mean, applies a Hann window and scales the magnitudes so a sine of amplitude A shows
+# a peak near A: the leakage of a speed that wanders a little is far smaller. The two give different numbers, so a
+# baseline remembers the window it was made with (baseline.py) and the threshold has to be recalibrated with real
+# healthy recordings before the Hann window is trusted.
+WINDOWS = ("none", "hann")
+
+
+def compute_spectrum(signal: np.ndarray | list[float], sample_rate: float, window: str = "none") -> Spectrum:
     """Computes the real (one-sided) amplitude spectrum of `signal`,
     sampled at `sample_rate` Hz, using numpy's real-input FFT
     (``numpy.fft.rfft`` - about 2x cheaper than a full complex FFT for a
@@ -65,10 +74,19 @@ def compute_spectrum(signal: np.ndarray | list[float], sample_rate: float) -> Sp
     # exists to avoid. Reject before the FFT ever runs.
     if not np.isfinite(signal).all():
         raise ValueError("signal must contain only finite numbers (no NaN/Infinity)")
+    if window not in WINDOWS:
+        raise ValueError(f"window must be one of {WINDOWS}, not {window!r}")
 
-    spectrum = np.fft.rfft(signal)
+    if window == "hann":
+        count = len(signal)
+        # the periodic Hann window (the one for spectral analysis), not the symmetric one
+        taper = 0.5 - 0.5 * np.cos(2.0 * np.pi * np.arange(count) / count)
+        spectrum = np.fft.rfft((signal - signal.mean()) * taper)
+        magnitudes = np.abs(spectrum) * (2.0 / taper.sum())
+    else:
+        spectrum = np.fft.rfft(signal)
+        magnitudes = np.abs(spectrum)
     freqs = np.fft.rfftfreq(len(signal), d=1.0 / sample_rate)
-    magnitudes = np.abs(spectrum)
 
     # Drop the DC bin (index 0) - see docstring.
     return Spectrum(freqs=freqs[1:], magnitudes=magnitudes[1:])

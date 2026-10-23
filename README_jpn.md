@@ -16,7 +16,7 @@
 
 ---
 
-> **誠実性チェック - 今日実際に動くもの:** FFT スペクトル（`fft.py`）、ビンごとの統計ベースライン（`baseline.py`）、max-z-score 異常検知器（`detector.py`）、ラベル付きフィクスチャ上での精度/再現率/F1 指標（`metrics.py`）、移動平均によるドリフト検知（`drift.py`）、本物の HYDRA-UMC-DATALAKE HTTP クライアント（`datalake_client.py`）、そして素の JSON/HTTP API（`api.py`）は本物であり、テスト済みである（73件のテストが通過：`pytest tests/` - `test_fft.py`、`test_baseline.py`、`test_detector.py`、`test_metrics.py`、`test_drift.py`、`test_datalake_client.py`、`test_api.py`）。以下の「AI-driven」および「Learning Models」は、健全と分かっているウィンドウから適合させた統計ベースラインを伴う本物の信号処理を指しており、学習済みのニューラルネットワークでも、バックグラウンドでの継続的な学習でもない：ベースラインは一度だけ適合され、起動時に本物の DATALAKE 履歴から、あるいは明示的な `POST /baseline/fit` 呼び出しによって適合し、次に明示的に再適合されるまでそのモデルバージョンのまま保たれる（`detector.py` 自身のモデルバージョン管理を参照）。以下の ROADMAP のフェーズ3・4（教師なし学習、音響解析）は完全に構想段階であり、本リポジトリにはどちらのコードもまだ存在しない。これまでに実際に出荷された内容は `CHANGELOG.md` を参照。
+> **誠実性チェック - 今日実際に動くもの:** FFT スペクトル（`fft.py`）、ビンごとの統計ベースライン（`baseline.py`）、max-z-score 異常検知器（`detector.py`）、ラベル付きフィクスチャ上での精度/再現率/F1 指標（`metrics.py`）、移動平均によるドリフト検知（`drift.py`）、本物の HYDRA-UMC-DATALAKE HTTP クライアント（`datalake_client.py`）、そして素の JSON/HTTP API（`api.py`）は本物であり、テスト済みである（87件のテストが通過：`pytest tests/` - `test_fft.py`、`test_baseline.py`、`test_detector.py`、`test_metrics.py`、`test_drift.py`、`test_datalake_client.py`、`test_api.py`）。以下の「AI-driven」および「Learning Models」は、健全と分かっているウィンドウから適合させた統計ベースラインを伴う本物の信号処理を指しており、学習済みのニューラルネットワークでも、バックグラウンドでの継続的な学習でもない：ベースラインは一度だけ適合され、起動時に本物の DATALAKE 履歴から、あるいは明示的な `POST /baseline/fit` 呼び出しによって適合し、次に明示的に再適合されるまでそのモデルバージョンのまま保たれる（`detector.py` 自身のモデルバージョン管理を参照）。以下の ROADMAP のフェーズ3・4（教師なし学習、音響解析）は完全に構想段階であり、本リポジトリにはどちらのコードもまだ存在しない。これまでに実際に出荷された内容は `CHANGELOG.md` を参照。
 
 ---
 
@@ -28,7 +28,7 @@
 |---|---|
 | バージョン | `0.1.7` |
 | 成熟度 | 機能する |
-| テスト | 73 (`pytest tests/`) |
+| テスト | 87 (`pytest tests/`) |
 | 技術 | Python / FFT / statistical baseline detection |
 | 対象 | HYDRA-UMC セルの Raspberry Pi CM5 |
 | 実機での確認 | まだです：このバージョンについて実機での動作記録はありません |
@@ -140,6 +140,8 @@ run.bat --port 8097
 `--sample-rate`、`--threshold`、`--baseline-path`、
 `--datalake-url`/`--source-id`/`--kind`/`--field`/`--window-size`)を
 そのまま渡します。
+
+既定ではどれも保守的な、さらに 3 つのオプション:`--window hann` は FFT の前に平均を除去してハン窓を掛けます(既定の `none` は従来の動作です。数値が変わるため、ベースラインは自分の窓を記憶し、別の窓で作られたものを検出器は復元を拒否し、Hann を信頼する前に実際の正常な記録で `--threshold` を再調整する必要があります)。DATALAKE から読む学習用履歴はページ単位(古い順)で読み、タイムスタンプの間隔が約 `1/sample-rate` でない箇所で分割し、重複するタイムスタンプを除きます。`--max-train-points` で止まった読み込みはそう報告します(`--train-start`/`--train-end` で範囲を指定)。`--token-file`(または `HYDRA_UMC_ANOMALY_TOKEN`)を指定すると `POST /baseline/fit`、`/drift/init`、`/drift/observe` が Bearer トークンを要求し、ループバック以外の `--addr` はトークンなしでは拒否されます。代用品に対してテスト済みで、実際の機械の記録には未実施です。
 
 適合済みのベースラインは再起動を乗り越えられるようになり、配列を手で
 貼り付ける代わりに実際の HYDRA-UMC-DATALAKE の履歴から適合させること

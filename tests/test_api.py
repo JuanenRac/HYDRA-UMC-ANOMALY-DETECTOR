@@ -68,14 +68,14 @@ def test_detect_before_fit_is_409(server_url: str) -> None:
 def test_stats_reports_unfitted_then_fitted(server_url: str) -> None:
     status, body = _get(f"{server_url}/stats")
     assert status == 200
-    assert body == {"fitted": False}
+    assert body == {"fitted": False, "window": "none", "writeProtected": False}
 
     windows = [_sine(50.0) for _ in range(5)]
     status, _ = _post(f"{server_url}/baseline/fit", {"windows": windows})
     assert status == 200
 
     status, body = _get(f"{server_url}/stats")
-    assert body == {"fitted": True}
+    assert body["fitted"] is True
 
 
 def test_fit_then_detect_real_round_trip(server_url: str) -> None:

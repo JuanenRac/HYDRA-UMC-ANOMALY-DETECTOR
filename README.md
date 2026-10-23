@@ -16,7 +16,7 @@
 
 ---
 
-> **Honesty check - what actually runs today:** the FFT spectrum (`fft.py`), the per-bin statistical baseline (`baseline.py`), the max-z-score anomaly detector (`detector.py`), precision/recall/F1 metrics over a labeled fixture (`metrics.py`), rolling-mean drift detection (`drift.py`), the real HYDRA-UMC-DATALAKE HTTP client (`datalake_client.py`), and the plain JSON/HTTP API (`api.py`) are real and tested (73 passing tests: `pytest tests/` - `test_fft.py`, `test_baseline.py`, `test_detector.py`, `test_metrics.py`, `test_drift.py`, `test_datalake_client.py`, `test_api.py`). "AI-driven" and "Learning Models" below describe real signal processing plus a statistical baseline fit from known-healthy windows - not a trained neural network, and not continuous background learning: a baseline is fit once, either at startup from real DATALAKE history or via an explicit `POST /baseline/fit` call, and stays exactly that model version until the next explicit refit (see `detector.py`'s own model-versioning). ROADMAP Phases 3 and 4 below (unsupervised learning, acoustic analysis) are fully aspirational - no code for either exists in this repo yet. See `CHANGELOG.md` for exactly what has shipped so far.
+> **Honesty check - what actually runs today:** the FFT spectrum (`fft.py`), the per-bin statistical baseline (`baseline.py`), the max-z-score anomaly detector (`detector.py`), precision/recall/F1 metrics over a labeled fixture (`metrics.py`), rolling-mean drift detection (`drift.py`), the real HYDRA-UMC-DATALAKE HTTP client (`datalake_client.py`), and the plain JSON/HTTP API (`api.py`) are real and tested (87 passing tests: `pytest tests/` - `test_fft.py`, `test_baseline.py`, `test_detector.py`, `test_metrics.py`, `test_drift.py`, `test_datalake_client.py`, `test_api.py`). "AI-driven" and "Learning Models" below describe real signal processing plus a statistical baseline fit from known-healthy windows - not a trained neural network, and not continuous background learning: a baseline is fit once, either at startup from real DATALAKE history or via an explicit `POST /baseline/fit` call, and stays exactly that model version until the next explicit refit (see `detector.py`'s own model-versioning). ROADMAP Phases 3 and 4 below (unsupervised learning, acoustic analysis) are fully aspirational - no code for either exists in this repo yet. See `CHANGELOG.md` for exactly what has shipped so far.
 
 ---
 
@@ -28,7 +28,7 @@
 |---|---|
 | Version | `0.1.7` |
 | Maturity | Functional |
-| Tests | 73 (`pytest tests/`) |
+| Tests | 87 (`pytest tests/`) |
 | Stack | Python / FFT / statistical baseline detection |
 | Target | The Raspberry Pi CM5 of a HYDRA-UMC cell |
 | On real hardware | Not yet: no run on real hardware is recorded for this version |
@@ -138,6 +138,8 @@ the real test suite (`pytest`). `run` starts the HTTP API and forwards any
 flags to it (`--addr`, `--port`, `--sample-rate`, `--threshold`,
 `--baseline-path`, `--datalake-url`/`--source-id`/`--kind`/`--field`/
 `--window-size`).
+
+Three more options, all conservative by default: `--window hann` removes the mean and applies a Hann window before the FFT (the default `none` is the original behaviour; the numbers differ, so a baseline remembers its window, a detector refuses to restore one made with another, and `--threshold` has to be recalibrated with real healthy recordings before Hann is trusted). The training history read from DATALAKE is now paged (oldest first), cut where the timestamps are not about `1/sample-rate` apart and stripped of repeated timestamps, and a read that stops at `--max-train-points` says so (`--train-start`/`--train-end` pick the range). `--token-file` (or `HYDRA_UMC_ANOMALY_TOKEN`) makes `POST /baseline/fit`, `/drift/init` and `/drift/observe` demand a bearer token, and a non-loopback `--addr` is refused without one. Tested against fakes; never against real machine recordings.
 
 The fitted baseline can now survive a restart, and can be fit from real
 HYDRA-UMC-DATALAKE history instead of pasting arrays by hand:

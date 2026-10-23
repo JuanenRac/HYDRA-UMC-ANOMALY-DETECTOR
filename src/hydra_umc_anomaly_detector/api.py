@@ -10,6 +10,7 @@ windows, then score live windows against it.
 """
 from __future__ import annotations
 
+import hmac
 import json
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -52,6 +53,19 @@ def _reject_json_constant(name: str) -> float:
     raise ValueError(f"{name} is not a valid JSON number")
 
 
+def _authorized(handler: BaseHTTPRequestHandler) -> bool:
+    """Operations that change the model or the drift monitor need the bearer token when the server has one."""
+    expected = handler.server.token
+    if not expected:
+        return True
+    scheme, _, presented = handler.headers.get("Authorization", "").partition(" ")
+    return scheme == "Bearer" and hmac.compare_digest(presented.encode("utf-8"), expected.encode("utf-8"))
+
+
+# the POST routes that change state; /detect only reads the model
+_WRITE_ROUTES = ("/baseline/fit", "/drift/init", "/drift/observe")
+
+
 def _write_json(handler: BaseHTTPRequestHandler, status: int, payload: object) -> None:
     body = json.dumps(payload).encode("utf-8")
     handler.send_response(status)
@@ -75,6 +89,9 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:  # noqa: N802
         path = urlparse(self.path).path
+        if path in _WRITE_ROUTES and not _authorized(self):
+            _write_json(self, 401, {"error": "a valid bearer token is required for this operation"})
+            return
         if path == "/baseline/fit":
             self._handle_fit()
         elif path == "/detect":
@@ -232,7 +249,7 @@ class Handler(BaseHTTPRequestHandler):
         if urlparse(self.path).path == "/stats":
             with self.server.lock:
                 fitted = self.server.detector.is_fitted
-            _write_json(self, 200, {"fitted": fitted})
+            _write_json(self, 200, {"fitted": fitted, "window": self.server.detector.window, "writeProtected": bool(self.server.token)})
         else:
             _write_json(self, 404, {"error": "not found"})
 
@@ -243,8 +260,17 @@ class DetectorServer(ThreadingHTTPServer):
     connection) is not safe to touch from multiple threads at once under
     ThreadingHTTPServer without one."""
 
-    def __init__(self, address: tuple[str, int], detector: AnomalyDetector, baseline_path: Path | None = None) -> None:
+    def __init__(
+        self,
+        address: tuple[str, int],
+        detector: AnomalyDetector,
+        baseline_path: Path | None = None,
+        token: str | None = None,
+    ) -> None:
         super().__init__(address, Handler)
+        # With a token, POST /baseline/fit, /drift/init and /drift/observe demand it (/detect and GET /stats stay
+        # open): whoever can reach the port can no longer replace the baseline every reading is judged against.
+        self.token = token or None
         self.detector = detector
         self.drift_monitor: DriftMonitor | None = None
         self.drift_model_version = 0

@@ -4,6 +4,10 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **An optional Hann window** (`--window hann`; the default `none` is the original behaviour): the mean is removed, a periodic Hann window is applied before the FFT and the magnitudes are scaled so a sine of amplitude A peaks near A. A frequency between two bins leaks far less. The numbers differ, so a baseline remembers the window it was made with (older files load as `none`), a detector refuses to restore a baseline made with another window, `GET /stats` reports the window, and the threshold has to be recalibrated with real healthy recordings before Hann is trusted.
+- **The training history from DATALAKE is looked at, not only read**: `fetch_windows_checked()` pages the read (DATALAKE answers the oldest points first, up to its limit), removes repeated timestamps, cuts the series wherever two neighbours are not about `1/sample-rate` apart and makes windows inside each uninterrupted run only; it says how many points, pages, repeats, cuts and dropped samples there were, and when it stopped at `--max-train-points`. New `--train-start`, `--train-end` and `--max-train-points`.
+- **A bearer token for the writing routes**: `--token-file` (or `HYDRA_UMC_ANOMALY_TOKEN`, at least 16 characters) makes `POST /baseline/fit`, `/drift/init` and `/drift/observe` demand it; `/detect` and `GET /stats` stay open. A non-loopback `--addr` is refused without a token.
+- 14 new tests (87 in all).
 - Building no longer changes the version; raising it is the explicit `bump` command (`python tools/hydra_project_tool.py bump`). The build scripts only report the version they built, and CI fails if a build script runs a bump.
 - The build and run scripts use the Python of the `.venv` directly instead of an activate script, and create the venv with the `py` launcher when there is one; CI fails if a script activates a venv.
 - The banner follows the animated style of the ecosystem banners, with the name, the kind and the technologies of the project.

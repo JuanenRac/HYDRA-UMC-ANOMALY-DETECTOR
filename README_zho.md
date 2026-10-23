@@ -16,7 +16,7 @@
 
 ---
 
-> **诚实检查——今天真正可运行的部分：** FFT 频谱（`fft.py`）、按频段的统计基线（`baseline.py`）、max-z-score 异常检测器（`detector.py`）、基于带标签测试集的精确率/召回率/F1 指标（`metrics.py`）、滚动均值漂移检测（`drift.py`）、真正的 HYDRA-UMC-DATALAKE HTTP 客户端（`datalake_client.py`），以及简单的 JSON/HTTP API（`api.py`）都是真实的并经过测试（73 个测试全部通过：`pytest tests/` —— `test_fft.py`、`test_baseline.py`、`test_detector.py`、`test_metrics.py`、`test_drift.py`、`test_datalake_client.py`、`test_api.py`）。下文中的 "AI-driven" 和 "Learning Models" 描述的是真实的信号处理加上从已知健康窗口拟合出的统计基线——不是训练出来的神经网络，也不是后台持续学习：基线只会拟合一次，要么在启动时从真实的 DATALAKE 历史数据拟合，要么通过显式调用 `POST /baseline/fit`，在下一次显式重新拟合之前会一直保持同一个模型版本（见 `detector.py` 自身的模型版本管理）。下文 ROADMAP 中的第 3、4 阶段（无监督学习、声学分析）完全是愿景性的——本仓库目前还没有任何相关代码。目前具体已交付的内容见 `CHANGELOG.md`。
+> **诚实检查——今天真正可运行的部分：** FFT 频谱（`fft.py`）、按频段的统计基线（`baseline.py`）、max-z-score 异常检测器（`detector.py`）、基于带标签测试集的精确率/召回率/F1 指标（`metrics.py`）、滚动均值漂移检测（`drift.py`）、真正的 HYDRA-UMC-DATALAKE HTTP 客户端（`datalake_client.py`），以及简单的 JSON/HTTP API（`api.py`）都是真实的并经过测试（87 个测试全部通过：`pytest tests/` —— `test_fft.py`、`test_baseline.py`、`test_detector.py`、`test_metrics.py`、`test_drift.py`、`test_datalake_client.py`、`test_api.py`）。下文中的 "AI-driven" 和 "Learning Models" 描述的是真实的信号处理加上从已知健康窗口拟合出的统计基线——不是训练出来的神经网络，也不是后台持续学习：基线只会拟合一次，要么在启动时从真实的 DATALAKE 历史数据拟合，要么通过显式调用 `POST /baseline/fit`，在下一次显式重新拟合之前会一直保持同一个模型版本（见 `detector.py` 自身的模型版本管理）。下文 ROADMAP 中的第 3、4 阶段（无监督学习、声学分析）完全是愿景性的——本仓库目前还没有任何相关代码。目前具体已交付的内容见 `CHANGELOG.md`。
 
 ---
 
@@ -28,7 +28,7 @@
 |---|---|
 | 版本 | `0.1.7` |
 | 成熟度 | 可用 |
-| 测试 | 73 (`pytest tests/`) |
+| 测试 | 87 (`pytest tests/`) |
 | 技术栈 | Python / FFT / statistical baseline detection |
 | 目标 | HYDRA-UMC 工作单元的 Raspberry Pi CM5 |
 | 真实硬件 | 尚未：此版本没有在真实硬件上运行的记录 |
@@ -137,6 +137,8 @@ run.bat --port 8097
 启动 HTTP API，并转发任何标志(`--addr`、`--port`、`--sample-rate`、
 `--threshold`、`--baseline-path`、
 `--datalake-url`/`--source-id`/`--kind`/`--field`/`--window-size`)。
+
+另外三个选项，默认都很保守：`--window hann` 在 FFT 之前去除均值并施加汉宁窗(默认的 `none` 是原有行为；数值会不同，所以基线会记住它的窗，检测器拒绝恢复用另一种窗做出的基线，并且在信任 Hann 之前必须用真实的健康记录重新校准 `--threshold`)。从 DATALAKE 读取的训练历史现在分页读取(最旧的先读)，在时间戳间隔不约等于 `1/sample-rate` 的地方切开，并去掉重复的时间戳；在 `--max-train-points` 处停止的读取会明确说明(`--train-start`/`--train-end` 选择范围)。`--token-file`(或 `HYDRA_UMC_ANOMALY_TOKEN`)使 `POST /baseline/fit`、`/drift/init` 和 `/drift/observe` 要求 Bearer 令牌，非回环的 `--addr` 没有令牌会被拒绝。已针对替身测试；从未用真实机器记录测试。
 
 现在拟合出的基线可以在重启后保留下来,也可以直接从 HYDRA-UMC-DATALAKE
 的真实历史数据中拟合,而不必手动粘贴数组:

@@ -20,13 +20,16 @@ learning yet.
 from __future__ import annotations
 
 import argparse
+import ipaddress
+import os
 import sys
 from pathlib import Path
 
 from . import __version__
 from .api import DetectorServer
 from .baseline import BaselineError, load_baseline, save_baseline
-from .datalake_client import DatalakeClient, DatalakeError, fetch_windows
+from .datalake_client import DatalakeClient, DatalakeError, fetch_windows_checked
+from .fft import WINDOWS
 from .detector import AnomalyDetector
 
 PROJECT_NAME = "HYDRA-UMC-ANOMALY-DETECTOR"
@@ -83,7 +86,30 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--kind", default=None, help="DATALAKE kind to fetch training windows from (required with --datalake-url)")
     parser.add_argument("--field", default=None, help="DATALAKE field to fetch training windows from (required with --datalake-url)")
     parser.add_argument("--window-size", type=int, default=None, help="samples per training window (required with --datalake-url)")
+    parser.add_argument("--window", choices=WINDOWS, default="none", help="window applied before the FFT: none (the original behaviour) or hann (removes the mean and the leakage of a speed that wanders; recalibrate --threshold with real healthy recordings before trusting it). A baseline remembers the window it was made with.")
+    parser.add_argument("--train-start", type=int, default=None, help="first timestamp (unix ms) of the training history read from DATALAKE")
+    parser.add_argument("--train-end", type=int, default=None, help="last timestamp (unix ms) of the training history read from DATALAKE")
+    parser.add_argument("--max-train-points", type=int, default=200_000, help="most points read from DATALAKE for training (the read is paged, oldest first; reaching this is reported)")
+    parser.add_argument("--token-file", default=None, help="file with a bearer token demanded by POST /baseline/fit, /drift/init and /drift/observe (or the HYDRA_UMC_ANOMALY_TOKEN environment variable). Needed to bind a non-loopback address.")
     args = parser.parse_args(argv)
+
+    token = os.environ.get("HYDRA_UMC_ANOMALY_TOKEN", "")
+    if args.token_file:
+        try:
+            token = Path(args.token_file).read_text(encoding="utf-8").strip()
+        except (OSError, UnicodeDecodeError) as e:
+            print(f"error: cannot read --token-file: {e}", file=sys.stderr)
+            return 2
+    if token and len(token) < 16:
+        print("error: the bearer token must have at least 16 characters", file=sys.stderr)
+        return 2
+    try:
+        loopback = args.addr == "localhost" or ipaddress.ip_address(args.addr).is_loopback
+    except ValueError:
+        loopback = False
+    if not loopback and not token:
+        print(f"error: --addr {args.addr} is not loopback: set --token-file (or HYDRA_UMC_ANOMALY_TOKEN) so the baseline cannot be replaced by anyone who reaches the port", file=sys.stderr)
+        return 2
 
     if args.datalake_url is not None and (args.source_id is None or args.kind is None or args.field is None or args.window_size is None):
         print("error: --datalake-url requires --source-id, --kind, --field and --window-size", file=sys.stderr)
@@ -92,15 +118,20 @@ def main(argv: list[str] | None = None) -> int:
     print(f"{PROJECT_NAME} v{__version__}")
     print(ROLE)
 
-    detector = AnomalyDetector(sample_rate=args.sample_rate, threshold=args.threshold)
+    detector = AnomalyDetector(sample_rate=args.sample_rate, threshold=args.threshold, window=args.window)
     baseline_path = Path(args.baseline_path) if args.baseline_path else None
 
     if args.datalake_url is not None:
         client = DatalakeClient(args.datalake_url)
         try:
-            windows = fetch_windows(
+            fetched = fetch_windows_checked(
                 client, source_id=args.source_id, kind=args.kind, field=args.field, window_size=args.window_size,
+                sample_rate=args.sample_rate, start=args.train_start, end=args.train_end, max_points=args.max_train_points,
             )
+            windows = fetched.windows
+            print(f"[anomaly-detector] read from DATALAKE: {fetched.summary()}")
+            if fetched.truncated:
+                print("[anomaly-detector] WARNING: the history is longer than --max-train-points; the baseline is made from the oldest part only. Pick the training range with --train-start/--train-end.", file=sys.stderr)
             detector.fit(windows)
         except (DatalakeError, BaselineError, ValueError) as e:
             print(f"error: could not fit from DATALAKE: {e}", file=sys.stderr)
@@ -122,9 +153,10 @@ def main(argv: list[str] | None = None) -> int:
             print(f"error: could not restore baseline from {baseline_path}: {e}", file=sys.stderr)
             return 1
 
-    server = DetectorServer((args.addr, args.port), detector, baseline_path)
+    server = DetectorServer((args.addr, args.port), detector, baseline_path, token=token)
     print(f"[anomaly-detector] HTTP API listening on {args.addr}:{args.port} "
-          f"(sample_rate={args.sample_rate}Hz, threshold={args.threshold}sigma)")
+          f"(sample_rate={args.sample_rate}Hz, threshold={args.threshold}sigma, window={args.window}, "
+          f"writes {'need a token' if token else 'open (loopback only)'})")
     print("[anomaly-detector] POST /baseline/fit, POST /detect, GET /stats")
     try:
         server.serve_forever()

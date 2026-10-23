@@ -19,7 +19,7 @@ from pathlib import Path
 
 import numpy as np
 
-from .fft import Spectrum, compute_spectrum
+from .fft import WINDOWS, Spectrum, compute_spectrum
 
 
 class BaselineError(ValueError):
@@ -37,6 +37,8 @@ class Baseline:
     # persisted before this was recorded), never a guess.
     n_windows: int = 0
     sample_rate: float = 0.0
+    # The window the spectra were made with (fft.WINDOWS). A baseline saved before this was recorded used none.
+    window: str = "none"
 
     def z_scores(self, spectrum: Spectrum) -> np.ndarray:
         """Per-bin z-scores of `spectrum` against this baseline - the
@@ -60,6 +62,7 @@ def fit_baseline(
     sample_rate: float,
     *,
     min_std: float = 1e-6,
+    window: str = "none",
 ) -> Baseline:
     """Builds a Baseline from real "known-healthy" signal windows -
     computes a real FFT per window, then the real per-bin mean/std
@@ -75,7 +78,7 @@ def fit_baseline(
         raise BaselineError(
             f"need at least 2 healthy windows to compute a standard deviation, got {len(healthy_windows)}"
         )
-    spectra = [compute_spectrum(w, sample_rate) for w in healthy_windows]
+    spectra = [compute_spectrum(w, sample_rate, window) for w in healthy_windows]
     lengths = {len(s.magnitudes) for s in spectra}
     if len(lengths) != 1:
         raise BaselineError(f"all healthy windows must be the same length, got spectra of sizes {sorted(lengths)}")
@@ -89,6 +92,7 @@ def fit_baseline(
         std=std,
         n_windows=len(healthy_windows),
         sample_rate=float(sample_rate),
+        window=window,
     )
 
 
@@ -120,6 +124,7 @@ def save_baseline(path: Path, baseline: Baseline, model_version: int) -> None:
                 model_version=np.asarray(model_version),
                 n_windows=np.asarray(baseline.n_windows),
                 sample_rate=np.asarray(baseline.sample_rate),
+                window=np.asarray(baseline.window),
             )
             fh.flush()
             os.fsync(fh.fileno())
@@ -159,6 +164,9 @@ def load_baseline(path: Path) -> tuple[Baseline, int]:
             # Absent in files saved before provenance was recorded.
             n_windows = int(data["n_windows"]) if "n_windows" in data.files else 0
             sample_rate = float(data["sample_rate"]) if "sample_rate" in data.files else 0.0
+            window = str(data["window"]) if "window" in data.files else "none"
     except (OSError, KeyError, ValueError) as exc:
         raise BaselineError(f"could not load baseline from {path}: {exc}") from exc
-    return Baseline(freqs=freqs, mean=mean, std=std, n_windows=n_windows, sample_rate=sample_rate), model_version
+    if window not in WINDOWS:
+        raise BaselineError(f"could not load baseline from {path}: unknown window {window!r}")
+    return Baseline(freqs=freqs, mean=mean, std=std, n_windows=n_windows, sample_rate=sample_rate, window=window), model_version

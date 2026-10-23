@@ -16,7 +16,7 @@
 
 ---
 
-> **Verificação de honestidade - o que realmente funciona hoje:** o espetro FFT (`fft.py`), a linha de base estatística por faixa (`baseline.py`), o detetor de anomalias por z-score máximo (`detector.py`), as métricas de precisão/recuperação/F1 sobre um conjunto etiquetado (`metrics.py`), a deteção de deriva por média móvel (`drift.py`), o cliente HTTP real do HYDRA-UMC-DATALAKE (`datalake_client.py`) e a API JSON/HTTP simples (`api.py`) são reais e testados (73 testes a passar: `pytest tests/` - `test_fft.py`, `test_baseline.py`, `test_detector.py`, `test_metrics.py`, `test_drift.py`, `test_datalake_client.py`, `test_api.py`). "Com IA" e "Modelos de aprendizagem" abaixo descrevem processamento de sinal real mais uma linha de base estatística ajustada a partir de janelas conhecidas como saudáveis - não uma rede neuronal treinada, nem aprendizagem contínua em segundo plano: uma linha de base ajusta-se uma vez, no arranque a partir do histórico real do DATALAKE ou através de uma chamada explícita a `POST /baseline/fit`, e mantém-se exatamente nessa versão do modelo até ao ajuste explícito seguinte (veja o próprio versionamento de modelos do `detector.py`). As Fases 3 e 4 do ROTEIRO abaixo (aprendizagem não supervisionada, análise acústica) são totalmente aspiracionais - não existe código para nenhuma delas neste repositório. Veja o `CHANGELOG.md` para saber exatamente o que foi entregue até agora.
+> **Verificação de honestidade - o que realmente funciona hoje:** o espetro FFT (`fft.py`), a linha de base estatística por faixa (`baseline.py`), o detetor de anomalias por z-score máximo (`detector.py`), as métricas de precisão/recuperação/F1 sobre um conjunto etiquetado (`metrics.py`), a deteção de deriva por média móvel (`drift.py`), o cliente HTTP real do HYDRA-UMC-DATALAKE (`datalake_client.py`) e a API JSON/HTTP simples (`api.py`) são reais e testados (87 testes a passar: `pytest tests/` - `test_fft.py`, `test_baseline.py`, `test_detector.py`, `test_metrics.py`, `test_drift.py`, `test_datalake_client.py`, `test_api.py`). "Com IA" e "Modelos de aprendizagem" abaixo descrevem processamento de sinal real mais uma linha de base estatística ajustada a partir de janelas conhecidas como saudáveis - não uma rede neuronal treinada, nem aprendizagem contínua em segundo plano: uma linha de base ajusta-se uma vez, no arranque a partir do histórico real do DATALAKE ou através de uma chamada explícita a `POST /baseline/fit`, e mantém-se exatamente nessa versão do modelo até ao ajuste explícito seguinte (veja o próprio versionamento de modelos do `detector.py`). As Fases 3 e 4 do ROTEIRO abaixo (aprendizagem não supervisionada, análise acústica) são totalmente aspiracionais - não existe código para nenhuma delas neste repositório. Veja o `CHANGELOG.md` para saber exatamente o que foi entregue até agora.
 
 ---
 
@@ -28,7 +28,7 @@
 |---|---|
 | Versão | `0.1.7` |
 | Maturidade | Funcional |
-| Testes | 73 (`pytest tests/`) |
+| Testes | 87 (`pytest tests/`) |
 | Tecnologia | Python / FFT / statistical baseline detection |
 | Destino | O Raspberry Pi CM5 de uma célula HYDRA-UMC |
 | Em hardware real | Ainda não: não há registo de execução em hardware real para esta versão |
@@ -137,6 +137,8 @@ a suite de testes real (`pytest`). O `run` arranca a API HTTP e reencaminha quai
 opções para ela (`--addr`, `--port`, `--sample-rate`, `--threshold`,
 `--baseline-path`, `--datalake-url`/`--source-id`/`--kind`/`--field`/
 `--window-size`).
+
+Mais três opções, todas conservadoras por omissão: `--window hann` retira a média e aplica uma janela de Hann antes da FFT (o valor por omissão `none` é o comportamento original; os números mudam, por isso uma linha de base lembra-se da sua janela, um detetor recusa restaurar uma feita com outra, e é preciso recalibrar `--threshold` com gravações saudáveis reais antes de confiar em Hann). O histórico de treino lido do DATALAKE passa a ser paginado (o mais antigo primeiro), cortado onde as marcas de tempo não distam cerca de `1/sample-rate` e sem marcas repetidas, e uma leitura que pára em `--max-train-points` di-lo (`--train-start`/`--train-end` escolhem o intervalo). `--token-file` (ou `HYDRA_UMC_ANOMALY_TOKEN`) faz `POST /baseline/fit`, `/drift/init` e `/drift/observe` exigirem um token Bearer, e um `--addr` fora de loopback é recusado sem ele. Testado contra simulacros; nunca com gravações reais de máquinas.
 
 A linha de base ajustada pode agora sobreviver a um reinício, e pode ser ajustada a partir do
 histórico real do HYDRA-UMC-DATALAKE em vez de colar matrizes à mão:
