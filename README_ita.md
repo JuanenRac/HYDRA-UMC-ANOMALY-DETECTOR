@@ -28,7 +28,7 @@
 |---|---|
 | Versione | `0.1.7` |
 | Maturità | Funzionale |
-| Test | 87 (`pytest tests/`) |
+| Test | 89 (`pytest tests/`) |
 | Tecnologia | Python / FFT / statistical baseline detection |
 | Destinazione | Il Raspberry Pi CM5 di una cella HYDRA-UMC |
 | Su hardware reale | Non ancora: per questa versione non risulta alcuna esecuzione su hardware reale |
@@ -40,6 +40,7 @@
 L'obiettivo è monitorare l'«impronta digitale» di ogni motore e testina dello strumento per poter individuare l'usura dei cuscinetti, le cinghie allentate o i guasti al raffreddamento con settimane di anticipo, consentendo una manutenzione programmata invece di riparazioni di emergenza (previsto: non esiste ancora codice di previsione dei guasti).
 
 ### Caratteristiche principali:
+* **Anche le letture si possono proteggere (`--protect-reads`).** Con un token impostato, anche `POST /detect` richiede `Authorization: Bearer <token>` (`--protect-reads` o `HYDRA_UMC_ANOMALY_PROTECT_READS=1`; serve un token); solo `GET /stats`, il percorso di salute, resta aperto. Disattivato per impostazione predefinita, perché DASHBOARD-AI e gli altri chiamanti di `/detect` non inviano ancora un token.
 * 🔍 **Analisi della firma:** FFT (Fast Fourier Transform) di campioni della corrente del motore per rilevare squilibri meccanici. *(implementato)*
 * 📉 **Manutenzione predittiva:** Stima RUL (Remaining Useful Life) per motori NEMA e strumenti URTC - aspirazionale, non esiste ancora codice per questo in questo repository.
 * 🚨 **Sistema di allerta precoce:** Mostrare avvisi direttamente nelle interfacce Studio e Watch - aspirazionale; oggi il rilevatore espone i propri verdetti solo tramite la propria semplice API HTTP (`api.py`), quelle interfacce non la interrogano ancora.

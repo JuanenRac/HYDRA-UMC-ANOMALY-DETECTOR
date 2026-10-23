@@ -89,7 +89,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:  # noqa: N802
         path = urlparse(self.path).path
-        if path in _WRITE_ROUTES and not _authorized(self):
+        if (path in _WRITE_ROUTES or (path == "/detect" and self.server.protect_reads)) and not _authorized(self):
             _write_json(self, 401, {"error": "a valid bearer token is required for this operation"})
             return
         if path == "/baseline/fit":
@@ -266,8 +266,11 @@ class DetectorServer(ThreadingHTTPServer):
         detector: AnomalyDetector,
         baseline_path: Path | None = None,
         token: str | None = None,
+        protect_reads: bool = False,
     ) -> None:
         super().__init__(address, Handler)
+        # With protect_reads (and a token), POST /detect demands the token too; only GET /stats (the health path) stays open.
+        self.protect_reads = protect_reads
         # With a token, POST /baseline/fit, /drift/init and /drift/observe demand it (/detect and GET /stats stay
         # open): whoever can reach the port can no longer replace the baseline every reading is judged against.
         self.token = token or None

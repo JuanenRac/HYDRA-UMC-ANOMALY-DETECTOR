@@ -91,6 +91,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--train-end", type=int, default=None, help="last timestamp (unix ms) of the training history read from DATALAKE")
     parser.add_argument("--max-train-points", type=int, default=200_000, help="most points read from DATALAKE for training (the read is paged, oldest first; reaching this is reported)")
     parser.add_argument("--token-file", default=None, help="file with a bearer token demanded by POST /baseline/fit, /drift/init and /drift/observe (or the HYDRA_UMC_ANOMALY_TOKEN environment variable). Needed to bind a non-loopback address.")
+    parser.add_argument("--protect-reads", action="store_true", default=os.environ.get("HYDRA_UMC_ANOMALY_PROTECT_READS", "") == "1", help="with a token, POST /detect demands it too (only GET /stats stays open); also HYDRA_UMC_ANOMALY_PROTECT_READS=1")
     args = parser.parse_args(argv)
 
     token = os.environ.get("HYDRA_UMC_ANOMALY_TOKEN", "")
@@ -153,10 +154,13 @@ def main(argv: list[str] | None = None) -> int:
             print(f"error: could not restore baseline from {baseline_path}: {e}", file=sys.stderr)
             return 1
 
-    server = DetectorServer((args.addr, args.port), detector, baseline_path, token=token)
+    if args.protect_reads and not token:
+        print("error: --protect-reads needs a token (--token-file or HYDRA_UMC_ANOMALY_TOKEN)", file=sys.stderr)
+        return 2
+    server = DetectorServer((args.addr, args.port), detector, baseline_path, token=token, protect_reads=args.protect_reads)
     print(f"[anomaly-detector] HTTP API listening on {args.addr}:{args.port} "
           f"(sample_rate={args.sample_rate}Hz, threshold={args.threshold}sigma, window={args.window}, "
-          f"writes {'need a token' if token else 'open (loopback only)'})")
+          f"{'reads and writes' if args.protect_reads else 'writes'} {'need a token' if token else 'open (loopback only)'})")
     print("[anomaly-detector] POST /baseline/fit, POST /detect, GET /stats")
     try:
         server.serve_forever()

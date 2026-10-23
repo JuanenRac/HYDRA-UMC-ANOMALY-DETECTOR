@@ -28,7 +28,7 @@
 |---|---|
 | 版本 | `0.1.7` |
 | 成熟度 | 可用 |
-| 测试 | 87 (`pytest tests/`) |
+| 测试 | 89 (`pytest tests/`) |
 | 技术栈 | Python / FFT / statistical baseline detection |
 | 目标 | HYDRA-UMC 工作单元的 Raspberry Pi CM5 |
 | 真实硬件 | 尚未：此版本没有在真实硬件上运行的记录 |
@@ -41,6 +41,7 @@
 皮带松动或散热故障，从而实现计划性维护而非紧急抢修（计划中：目前还没有故障预测代码）。
 
 ### 关键特性：
+* **读取也可以受保护（`--protect-reads`）。** 设置令牌后，`POST /detect` 也要求 `Authorization: Bearer <token>`（`--protect-reads` 或 `HYDRA_UMC_ANOMALY_PROTECT_READS=1`，需要令牌）；只有健康路径 `GET /stats` 保持开放。默认关闭，因为 DASHBOARD-AI 和 `/detect` 的其他调用方尚未发送令牌。
 * 🔍 **特征分析：** 对电机电流样本进行 FFT（快速傅里叶变换）以检测机械不平衡。*(已实现)*
 * 📉 **预测性维护：** 面向 NEMA 电机和 URTC 工具的 RUL（剩余使用寿命）估算——仍属愿景,本仓库中目前还没有相关代码。
 * 🚨 **早期预警系统：** 直接在 Studio 和 Watch 界面显示告警——仍属愿景;目前该检测器仅通过自身简单的 HTTP API(`api.py`)暴露判定结果,这些界面尚未去轮询它。

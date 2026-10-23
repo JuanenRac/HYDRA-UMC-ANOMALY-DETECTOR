@@ -28,7 +28,7 @@
 |---|---|
 | Version | `0.1.7` |
 | Maturité | Fonctionnel |
-| Tests | 87 (`pytest tests/`) |
+| Tests | 89 (`pytest tests/`) |
 | Technologie | Python / FFT / statistical baseline detection |
 | Cible | Le Raspberry Pi CM5 d'une cellule HYDRA-UMC |
 | Sur matériel réel | Pas encore : aucune exécution sur du matériel réel n'est consignée pour cette version |
@@ -40,6 +40,7 @@
 L'objectif est de surveiller l'« empreinte numérique » de chaque moteur et tête d'outil afin de pouvoir repérer l'usure des roulements, les courroies desserrées ou les défaillances de refroidissement des semaines à l'avance, pour permettre une maintenance programmée au lieu de réparations d'urgence (prévu : aucun code de prédiction de pannes n'existe encore).
 
 ### Caractéristiques principales :
+* **Les lectures peuvent aussi être protégées (`--protect-reads`).** Avec un jeton configuré, `POST /detect` exige aussi `Authorization: Bearer <token>` (`--protect-reads` ou `HYDRA_UMC_ANOMALY_PROTECT_READS=1` ; il faut un jeton) ; seul `GET /stats`, le chemin de santé, reste ouvert. Désactivé par défaut, car DASHBOARD-AI et les autres appelants de `/detect` n'envoient pas encore de jeton.
 * 🔍 **Analyse de signature :** FFT (Fast Fourier Transform) d'échantillons de courant moteur pour détecter un déséquilibre mécanique. *(implémenté)*
 * 📉 **Maintenance prédictive :** Estimation de la RUL (Remaining Useful Life) pour les moteurs NEMA et les outils URTC - aspirationnel, aucun code n'existe encore pour cela dans ce dépôt.
 * 🚨 **Système d'alerte précoce :** Afficher des alertes directement dans les interfaces Studio et Watch - aspirationnel ; aujourd'hui le détecteur expose seulement ses verdicts via sa propre API HTTP simple (`api.py`), ces interfaces ne l'interrogent pas encore.

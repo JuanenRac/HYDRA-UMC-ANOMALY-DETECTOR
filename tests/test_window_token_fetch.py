@@ -211,3 +211,32 @@ def test_the_training_range_is_asked_for_and_bad_arguments_are_refused() -> None
             args = {"window_size": 10, "sample_rate": 1000.0, **bad}
             with pytest.raises(ValueError):
                 fetch_windows_checked(DatalakeClient(url), source_id="m", kind="vib", field="v", **args)
+
+
+# ---------------------------------------------------------------------------- the token on the reading route too
+@pytest.fixture()
+def read_protected_server() -> Iterator[str]:
+    server = DetectorServer(("127.0.0.1", 0), AnomalyDetector(RATE, threshold=4.0), token="a-long-enough-secret-token", protect_reads=True)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        yield f"http://127.0.0.1:{server.server_address[1]}"
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+
+def test_with_protect_reads_detect_needs_the_token_and_stats_stays_open(read_protected_server: str) -> None:
+    window = {"window": list(_sine(50.0, n=200))}
+    assert _post(f"{read_protected_server}/detect", window) == 401
+    assert _post(f"{read_protected_server}/detect", window, "wrong-token-of-the-same-length") == 401
+    assert _post(f"{read_protected_server}/detect", window, "a-long-enough-secret-token") != 401
+    with urllib.request.urlopen(f"{read_protected_server}/stats", timeout=5) as resp:
+        assert resp.status == 200
+
+
+def test_protect_reads_without_a_token_is_refused_at_start(capsys, monkeypatch) -> None:
+    monkeypatch.delenv("HYDRA_UMC_ANOMALY_TOKEN", raising=False)
+    assert main(["--addr", "127.0.0.1", "--port", "0", "--protect-reads"]) == 2
+    assert "needs a token" in capsys.readouterr().err

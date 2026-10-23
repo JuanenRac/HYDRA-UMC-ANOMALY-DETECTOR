@@ -28,7 +28,7 @@
 |---|---|
 | Versão | `0.1.7` |
 | Maturidade | Funcional |
-| Testes | 87 (`pytest tests/`) |
+| Testes | 89 (`pytest tests/`) |
 | Tecnologia | Python / FFT / statistical baseline detection |
 | Destino | O Raspberry Pi CM5 de uma célula HYDRA-UMC |
 | Em hardware real | Ainda não: não há registo de execução em hardware real para esta versão |
@@ -40,6 +40,7 @@ O **HYDRA-UMC-ANOMALY-DETECTOR** destina-se a ser o guardião proativo da saúde
 O objetivo é monitorizar a "impressão digital" de cada motor e cabeça de ferramenta para poder identificar desgaste de rolamentos, correias soltas ou falhas de arrefecimento com semanas de antecedência, permitindo uma manutenção programada em vez de reparações de emergência (previsto: ainda não existe código de previsão de falhas).
 
 ### Funcionalidades principais:
+* **As leituras também podem ser protegidas (`--protect-reads`).** Com um token definido, `POST /detect` também exige `Authorization: Bearer <token>` (`--protect-reads` ou `HYDRA_UMC_ANOMALY_PROTECT_READS=1`; precisa de um token); só `GET /stats`, o caminho de saúde, fica aberto. Desativado por omissão, porque o DASHBOARD-AI e os restantes chamadores de `/detect` ainda não enviam token.
 * 🔍 **Análise de assinatura:** FFT (Transformada Rápida de Fourier) de amostras da corrente dos motores para detetar desequilíbrio mecânico. *(implementado)*
 * 📉 **Manutenção preditiva:** estimativa da RUL (vida útil restante) para motores NEMA e ferramentas URTC - aspiracional, ainda não existe código para isto neste repositório.
 * 🚨 **Sistema de alerta precoce:** apresentar alertas diretamente nas interfaces do Studio e do Watch - aspiracional; hoje o detetor só expõe os seus veredictos pela sua própria API HTTP simples (`api.py`), as interfaces consumidoras ainda não a consultam.
