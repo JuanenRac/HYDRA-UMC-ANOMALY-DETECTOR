@@ -94,7 +94,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--baseline-dir", default=None, help="Persist the baseline of each series (POST /detectors/{sourceId}/{kind}/{field}/fit) in this directory and restore them on startup.")
     parser.add_argument("--max-series", type=int, default=DEFAULT_MAX_DETECTORS, help="most series that may have a detector of their own at once (default %(default)s)")
     parser.add_argument("--token-file", default=None, help="file with a bearer token demanded by POST /baseline/fit, /drift/init and /drift/observe (or the HYDRA_UMC_ANOMALY_TOKEN environment variable). Needed to bind a non-loopback address.")
-    parser.add_argument("--protect-reads", action="store_true", default=os.environ.get("HYDRA_UMC_ANOMALY_PROTECT_READS", "") == "1", help="with a token, POST /detect demands it too (only GET /stats stays open); also HYDRA_UMC_ANOMALY_PROTECT_READS=1")
+    parser.add_argument("--protect-reads", dest="protect_reads", action="store_true", default=None, help="POST /detect demands the token too (only GET /stats stays open). This is the default whenever a token is set; HYDRA_UMC_ANOMALY_PROTECT_READS=1 does the same and, unlike the default, refuses to start without a token")
+    parser.add_argument("--no-protect-reads", dest="protect_reads", action="store_false", help="leave POST /detect open even though a token is set (HYDRA_UMC_ANOMALY_PROTECT_READS=0 does the same)")
     args = parser.parse_args(argv)
 
     token = os.environ.get("HYDRA_UMC_ANOMALY_TOKEN", "")
@@ -157,9 +158,19 @@ def main(argv: list[str] | None = None) -> int:
             print(f"error: could not restore baseline from {baseline_path}: {e}", file=sys.stderr)
             return 1
 
-    if args.protect_reads and not token:
+    protect_reads = args.protect_reads
+    if protect_reads is None:
+        env_value = os.environ.get("HYDRA_UMC_ANOMALY_PROTECT_READS", "").strip()
+        if env_value == "1":
+            protect_reads = True
+        elif env_value == "0":
+            protect_reads = False
+    if protect_reads and not token:
         print("error: --protect-reads needs a token (--token-file or HYDRA_UMC_ANOMALY_TOKEN)", file=sys.stderr)
         return 2
+    if protect_reads is None:
+        # Default: reads are protected whenever there is a token to demand; without one (loopback only) there is nothing to check.
+        protect_reads = bool(token)
     if args.max_series < 1:
         print("error: --max-series must be at least 1", file=sys.stderr)
         return 2
@@ -173,10 +184,10 @@ def main(argv: list[str] | None = None) -> int:
         print(f"[anomaly-detector] restored the baseline of {restored} series from {args.baseline_dir}")
     for problem in problems:
         print(f"[anomaly-detector] WARNING: could not restore a series: {problem}", file=sys.stderr)
-    server = DetectorServer((args.addr, args.port), detector, baseline_path, token=token, protect_reads=args.protect_reads, registry=registry)
+    server = DetectorServer((args.addr, args.port), detector, baseline_path, token=token, protect_reads=protect_reads, registry=registry)
     print(f"[anomaly-detector] HTTP API listening on {args.addr}:{args.port} "
           f"(sample_rate={args.sample_rate}Hz, threshold={args.threshold}sigma, window={args.window}, "
-          f"{'reads and writes' if args.protect_reads else 'writes'} {'need a token' if token else 'open (loopback only)'})")
+          f"{'reads and writes' if protect_reads else 'writes'} {'need a token' if token else 'open (loopback only)'})")
     print("[anomaly-detector] POST /baseline/fit, POST /detect, GET /stats; one detector per series: POST /detectors/{sourceId}/{kind}/{field}/fit|detect|drift/init|drift/observe, GET /detectors")
     try:
         server.serve_forever()

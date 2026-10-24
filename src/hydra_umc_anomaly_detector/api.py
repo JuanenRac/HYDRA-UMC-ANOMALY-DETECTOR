@@ -325,15 +325,16 @@ class DetectorServer(ThreadingHTTPServer):
         detector: AnomalyDetector,
         baseline_path: Path | None = None,
         token: str | None = None,
-        protect_reads: bool = False,
+        protect_reads: bool | None = None,
         registry: DetectorRegistry | None = None,
     ) -> None:
         super().__init__(address, Handler)
         # One detector per series (sourceId, kind, field), beside the shared one: see registry.py. Without one, the bound is the default and nothing is saved.
         self.registry = registry if registry is not None else DetectorRegistry(lambda: AnomalyDetector(sample_rate=detector.sample_rate, threshold=detector.threshold, window=detector.window))
         # With protect_reads (and a token), POST /detect demands the token too; only GET /stats (the health path) stays open.
-        self.protect_reads = protect_reads
-        # With a token, POST /baseline/fit, /drift/init and /drift/observe demand it (/detect and GET /stats stay
+        # None (the default) means protected whenever a token is set: there is nothing to demand without one.
+        self.protect_reads = bool(token) if protect_reads is None else protect_reads
+        # With a token, POST /baseline/fit, /drift/init and /drift/observe demand it (GET /stats stays
         # open): whoever can reach the port can no longer replace the baseline every reading is judged against.
         self.token = token or None
         self.detector = detector

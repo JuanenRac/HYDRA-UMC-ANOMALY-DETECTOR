@@ -131,7 +131,7 @@ def test_a_hostile_source_id_never_becomes_a_path(tmp_path: Path):
 @pytest.fixture()
 def server(tmp_path: Path) -> Iterator[DetectorServer]:
     registry = DetectorRegistry(_factory, tmp_path / "series", max_detectors=3)
-    srv = DetectorServer(("127.0.0.1", 0), _factory(), token=TOKEN, registry=registry)
+    srv = DetectorServer(("127.0.0.1", 0), _factory(), token=TOKEN, protect_reads=False, registry=registry)
     threading.Thread(target=srv.serve_forever, daemon=True).start()
     try:
         yield srv
@@ -218,7 +218,7 @@ def test_refitting_a_series_raises_its_model_version(server):
     assert second == first + 1
 
 
-def test_writing_a_series_needs_the_token_and_scoring_does_not_by_default(server):
+def test_writing_a_series_needs_the_token_and_scoring_does_not_with_reads_left_open(server):
     url = _url(server, "/detectors/motor/vibration/value/fit")
     assert _post(url, {"windows": [_sine(50.0)] * 5}, token=None)[0] == 401
     assert _post(url, {"windows": [_sine(50.0)] * 5}, token="wrong-token-of-sixteen-chars")[0] == 401
@@ -285,7 +285,7 @@ def test_the_baselines_survive_a_restart(tmp_path: Path):
     def build():
         registry = DetectorRegistry(_factory, tmp_path / "series")
         registry.restore_all()
-        srv = DetectorServer(("127.0.0.1", 0), _factory(), token=TOKEN, registry=registry)
+        srv = DetectorServer(("127.0.0.1", 0), _factory(), token=TOKEN, protect_reads=False, registry=registry)
         threading.Thread(target=srv.serve_forever, daemon=True).start()
         return srv
 
@@ -308,3 +308,16 @@ def test_the_default_routes_still_work_exactly_as_before(server):
     assert _post(_url(server, "/baseline/fit"), {"windows": [_noisy(50.0, i) for i in range(8)]})[0] == 200
     assert _post(_url(server, "/detect"), {"window": _noisy(50.0, 3)}, token=None)[1]["anomalous"] is False
     assert urllib.parse.urlparse(_url(server, "/stats")).path == "/stats"
+
+
+def test_scoring_a_series_needs_the_token_by_default_when_there_is_one():
+    srv = DetectorServer(("127.0.0.1", 0), _factory(), token=TOKEN, registry=DetectorRegistry(_factory))
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    try:
+        assert srv.protect_reads is True
+        _post(_url(srv, "/detectors/motor/vibration/value/fit"), {"windows": [_noisy(50.0, i) for i in range(8)]})
+        assert _post(_url(srv, "/detectors/motor/vibration/value/detect"), {"window": _sine(50.0)}, token=None)[0] == 401
+        assert _post(_url(srv, "/detectors/motor/vibration/value/detect"), {"window": _sine(50.0)})[0] == 200
+    finally:
+        srv.shutdown()
+        srv.server_close()

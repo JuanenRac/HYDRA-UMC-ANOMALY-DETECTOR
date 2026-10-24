@@ -126,15 +126,16 @@ def _post(url: str, body: dict, token: str | None = None) -> int:
         return error.code
 
 
-def test_the_writing_routes_need_the_token_and_the_reading_ones_do_not(protected_server: str) -> None:
+def test_the_writing_routes_and_detect_need_the_token_by_default_and_stats_stays_open(protected_server: str) -> None:
     windows = {"windows": [list(_sine(50.0, n=200) + 0.01 * i) for i in range(4)]}
     assert _post(f"{protected_server}/baseline/fit", windows) == 401
     assert _post(f"{protected_server}/baseline/fit", windows, "wrong-token-of-the-same-length") == 401
     assert _post(f"{protected_server}/drift/init", {"baselineScores": [1.0, 2.0]}) == 401
     assert _post(f"{protected_server}/drift/observe", {"score": 1.0}) == 401
     assert _post(f"{protected_server}/baseline/fit", windows, "a-long-enough-secret-token") == 200
-    # reading: detect is open (it changes nothing), and so is /stats
-    assert _post(f"{protected_server}/detect", {"window": list(_sine(50.0, n=200))}) == 200
+    # reading: with a token set, /detect asks for it too by default; /stats (the health path) stays open
+    assert _post(f"{protected_server}/detect", {"window": list(_sine(50.0, n=200))}) == 401
+    assert _post(f"{protected_server}/detect", {"window": list(_sine(50.0, n=200))}, "a-long-enough-secret-token") == 200
     with urllib.request.urlopen(f"{protected_server}/stats", timeout=5) as resp:
         body = json.loads(resp.read())
     assert body["writeProtected"] is True
@@ -240,3 +241,61 @@ def test_protect_reads_without_a_token_is_refused_at_start(capsys, monkeypatch) 
     monkeypatch.delenv("HYDRA_UMC_ANOMALY_TOKEN", raising=False)
     assert main(["--addr", "127.0.0.1", "--port", "0", "--protect-reads"]) == 2
     assert "needs a token" in capsys.readouterr().err
+
+
+@pytest.fixture()
+def unprotected_reads_server() -> Iterator[str]:
+    server = DetectorServer(("127.0.0.1", 0), AnomalyDetector(RATE, threshold=4.0), token="a-long-enough-secret-token", protect_reads=False)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        yield f"http://127.0.0.1:{server.server_address[1]}"
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+
+def test_reads_can_be_left_open_on_purpose(unprotected_reads_server: str) -> None:
+    windows = {"windows": [list(_sine(50.0, n=200) + 0.01 * i) for i in range(4)]}
+    assert _post(f"{unprotected_reads_server}/baseline/fit", windows) == 401
+    assert _post(f"{unprotected_reads_server}/detect", {"window": list(_sine(50.0, n=200))}) != 401
+
+
+def test_without_a_token_nothing_is_demanded_and_the_default_does_not_stop_the_start() -> None:
+    server = DetectorServer(("127.0.0.1", 0), AnomalyDetector(RATE, threshold=4.0))
+    try:
+        assert server.protect_reads is False and server.token is None
+    finally:
+        server.server_close()
+
+
+def test_the_environment_switches_the_default_off_and_on(capsys, monkeypatch) -> None:
+    monkeypatch.delenv("HYDRA_UMC_ANOMALY_TOKEN", raising=False)
+    monkeypatch.setenv("HYDRA_UMC_ANOMALY_PROTECT_READS", "1")
+    assert main(["--addr", "127.0.0.1", "--port", "0"]) == 2
+    assert "needs a token" in capsys.readouterr().err
+    monkeypatch.setenv("HYDRA_UMC_ANOMALY_PROTECT_READS", "0")
+    monkeypatch.setenv("HYDRA_UMC_ANOMALY_TOKEN", "a-long-enough-secret-token")
+    captured = {}
+
+    class Stop(Exception):
+        pass
+
+    import hydra_umc_anomaly_detector.main as m
+
+    def fake_server(*args, **kwargs):
+        captured.update(kwargs)
+        raise Stop
+
+    monkeypatch.setattr(m, "DetectorServer", fake_server)
+    with pytest.raises(Stop):
+        main(["--addr", "127.0.0.1", "--port", "0"])
+    assert captured["protect_reads"] is False
+    monkeypatch.delenv("HYDRA_UMC_ANOMALY_PROTECT_READS")
+    with pytest.raises(Stop):
+        main(["--addr", "127.0.0.1", "--port", "0"])
+    assert captured["protect_reads"] is True
+    with pytest.raises(Stop):
+        main(["--addr", "127.0.0.1", "--port", "0", "--no-protect-reads"])
+    assert captured["protect_reads"] is False

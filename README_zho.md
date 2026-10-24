@@ -41,8 +41,8 @@
 皮带松动或散热故障，从而实现计划性维护而非紧急抢修（计划中：目前还没有故障预测代码）。
 
 ### 关键特性：
-* **每个序列一个检测器(`/detectors/{sourceId}/{kind}/{field}/...`)。** 电机和主轴的振动并不相同,共用一个基线会把另一个判为异常。`POST /detectors/{sourceId}/{kind}/{field}/fit` 拟合该序列的基线(DATALAKE 存放它所用的三元组),`.../detect` 对照它给窗口打分,`.../drift/init` 和 `.../drift/observe` 给它独立的漂移监视器,`GET /detectors` 列出各序列及其是否已拟合。序列由第一次成功的拟合创建,最多 `--max-series`(64)个;对从未拟合的序列打分返回 `409`,绝不是来自其他基线的结论;拟合一个序列绝不会触及另一个序列或共用的那个。写入与共用基线一样需要令牌,打分仅在 `--protect-reads` 时需要。`--baseline-dir` 为每个序列保存一份基线并在启动时恢复。原有路由不变。*(已实现,已在 `tests/test_series.py` 中测试)*
-* **读取也可以受保护（`--protect-reads`）。** 设置令牌后，`POST /detect` 也要求 `Authorization: Bearer <token>`（`--protect-reads` 或 `HYDRA_UMC_ANOMALY_PROTECT_READS=1`，需要令牌）；只有健康路径 `GET /stats` 保持开放。默认关闭，因为 DASHBOARD-AI 和 `/detect` 的其他调用方尚未发送令牌。
+* **每个序列一个检测器(`/detectors/{sourceId}/{kind}/{field}/...`)。** 电机和主轴的振动并不相同,共用一个基线会把另一个判为异常。`POST /detectors/{sourceId}/{kind}/{field}/fit` 拟合该序列的基线(DATALAKE 存放它所用的三元组),`.../detect` 对照它给窗口打分,`.../drift/init` 和 `.../drift/observe` 给它独立的漂移监视器,`GET /detectors` 列出各序列及其是否已拟合。序列由第一次成功的拟合创建,最多 `--max-series`(64)个;对从未拟合的序列打分返回 `409`,绝不是来自其他基线的结论;拟合一个序列绝不会触及另一个序列或共用的那个。写入与共用基线一样需要令牌,打分在设置了令牌时同样需要（`--no-protect-reads` 可放开）。`--baseline-dir` 为每个序列保存一份基线并在启动时恢复。原有路由不变。*(已实现,已在 `tests/test_series.py` 中测试)*
+* **读取默认受保护（`--protect-reads`）。** 设置令牌后，`POST /detect` 也要求 `Authorization: Bearer <token>`；只有健康路径 `GET /stats` 保持开放。只要有令牌，这就是默认行为（`--no-protect-reads` 或 `HYDRA_UMC_ANOMALY_PROTECT_READS=0` 让读取保持开放；`HYDRA_UMC_ANOMALY_PROTECT_READS=1` 在没有令牌时拒绝启动）。没有令牌（仅回环）时无需要求。通过 HYDRA-UMC-SERVER 读取的调用方已经发送令牌。
 * 🔍 **特征分析：** 对电机电流样本进行 FFT（快速傅里叶变换）以检测机械不平衡。*(已实现)*
 * 📉 **预测性维护：** 面向 NEMA 电机和 URTC 工具的 RUL（剩余使用寿命）估算——仍属愿景,本仓库中目前还没有相关代码。
 * 🚨 **早期预警系统：** 直接在 Studio 和 Watch 界面显示告警——仍属愿景;目前该检测器仅通过自身简单的 HTTP API(`api.py`)暴露判定结果,这些界面尚未去轮询它。

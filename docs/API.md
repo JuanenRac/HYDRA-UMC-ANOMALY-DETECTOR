@@ -14,7 +14,7 @@ hydra-umc-anomaly-detector --addr 127.0.0.1 --port 8097
 
 `--addr`/`--port` default to `127.0.0.1:8097` - loopback-only, matching every other internal API in this ecosystem (Datalake, Job-Dispatcher, Telemetry-Collector) and the real CM5's own systemd unit, which already passed this same override explicitly. Run `hydra-umc-anomaly-detector --help` for the full flag list (including `--sample-rate` and `--threshold`, which configure the `AnomalyDetector` the server wraps).
 
-All responses are `application/json`. There is no authentication of any kind on any endpoint, so pass `--addr 0.0.0.0` only with a real understanding of what that exposes on your own network - `POST /baseline/fit` would let anyone reachable overwrite the statistical baseline this detector compares real readings against.
+All responses are `application/json`. Without a token there is no authentication on any endpoint, which is why a non-loopback `--addr` is refused unless a token is set (`--token-file` or `HYDRA_UMC_ANOMALY_TOKEN`, at least 16 characters): with one, every route but `GET /stats` demands `Authorization: Bearer <token>` (reads too, unless `--no-protect-reads`). `POST /baseline/fit` would otherwise let anyone reachable overwrite the statistical baseline this detector compares real readings against.
 
 Every JSON request body is limited to 1 MiB. Missing, negative, malformed or
 oversized `Content-Length` values are rejected with `400` before JSON parsing.
@@ -51,13 +51,13 @@ Calling this again replaces the previous baseline - it is not additive. A drift 
 
 The routes above keep ONE shared baseline. A motor and a spindle do not vibrate alike, and a baseline fitted on one calls the other anomalous, so every operation also exists for a single series, named by the triple HYDRA-UMC-DATALAKE stores it under:
 
-| Route | Same as | Needs the token |
+| Route | Same as | Needs the token (when one is set) |
 |---|---|---|
 | `POST /detectors/{sourceId}/{kind}/{field}/fit` | `POST /baseline/fit` | yes |
-| `POST /detectors/{sourceId}/{kind}/{field}/detect` | `POST /detect` | only with `--protect-reads` |
+| `POST /detectors/{sourceId}/{kind}/{field}/detect` | `POST /detect` | unless `--no-protect-reads` |
 | `POST /detectors/{sourceId}/{kind}/{field}/drift/init` | `POST /drift/init` | yes |
 | `POST /detectors/{sourceId}/{kind}/{field}/drift/observe` | `POST /drift/observe` | yes |
-| `GET /detectors` | - | only with `--protect-reads` |
+| `GET /detectors` | - | unless `--no-protect-reads` |
 
 `GET /detectors` answers `{"detectors": [{"sourceId", "kind", "field", "fitted", "modelVersion"}, ...]}`. Each of the three names is 1 to 96 characters of letters, digits, dot, dash, colon or underscore, starting with a letter or a digit (anything else is a `400`); the names are URL-decoded.
 
