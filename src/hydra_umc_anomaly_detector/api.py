@@ -15,11 +15,12 @@ import json
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import unquote, urlparse
 
 from .baseline import BaselineError, save_baseline
 from .detector import AnomalyDetector, NotFittedError
 from .drift import DriftMonitor, DriftMonitorError
+from .registry import DetectorRegistry, RegistryError, RegistryFull, parse_key
 
 
 MAX_BODY_BYTES = 1024 * 1024
@@ -64,6 +65,8 @@ def _authorized(handler: BaseHTTPRequestHandler) -> bool:
 
 # the POST routes that change state; /detect only reads the model
 _WRITE_ROUTES = ("/baseline/fit", "/drift/init", "/drift/observe")
+# what can be asked of ONE series, after /detectors/{sourceId}/{kind}/{field}/
+_SERIES_OPERATIONS = ("fit", "detect", "drift/init", "drift/observe")
 
 
 def _write_json(handler: BaseHTTPRequestHandler, status: int, payload: object) -> None:
@@ -100,10 +103,51 @@ class Handler(BaseHTTPRequestHandler):
             self._handle_drift_init()
         elif path == "/drift/observe":
             self._handle_drift_observe()
+        elif path.startswith("/detectors/"):
+            self._handle_series(path)
         else:
             _write_json(self, 404, {"error": "not found"})
 
-    def _handle_fit(self) -> None:
+    def _handle_series(self, path: str) -> None:
+        """POST /detectors/{sourceId}/{kind}/{field}/{fit|detect|drift/init|drift/observe}: the same operations on the detector of ONE series."""
+        parts = path.split("/")[2:]
+        if len(parts) < 4 or "/".join(parts[3:]) not in _SERIES_OPERATIONS:
+            _write_json(self, 404, {"error": "not found"})
+            return
+        operation = "/".join(parts[3:])
+        try:
+            key = parse_key(unquote(parts[0]), unquote(parts[1]), unquote(parts[2]))
+        except RegistryError as error:
+            _write_json(self, 400, {"error": str(error)})
+            return
+        # writing a series needs the token like writing the shared baseline; scoring needs it only with --protect-reads
+        if (operation != "detect" or self.server.protect_reads) and not _authorized(self):
+            _write_json(self, 401, {"error": "a valid bearer token is required for this operation"})
+            return
+        registry = self.server.registry
+        if operation == "fit":
+            existing = registry.get(key)
+            if existing is not None:
+                self._handle_fit(existing)
+                return
+            # a series that does not exist yet: fit a fresh detector, and give it its place only if the fit works
+            fresh = registry.new_detector()
+            holder = type("Fresh", (), {"detector": fresh, "lock": threading.Lock(), "baseline_path": None, "drift_monitor": None, "drift_model_version": 0})()
+            self._handle_fit(holder, key)
+            return
+        entry = registry.get(key)
+        if entry is None:
+            _write_json(self, 409, {"error": f"the series {key.source_id}/{key.kind}/{key.field} has no baseline yet - fit it first with POST /detectors/{{sourceId}}/{{kind}}/{{field}}/fit"})
+            return
+        if operation == "detect":
+            self._handle_detect(entry)
+        elif operation == "drift/init":
+            self._handle_drift_init(entry)
+        else:
+            self._handle_drift_observe(entry)
+
+    def _handle_fit(self, ctx: object = None, registry_key: object = None) -> None:
+        ctx = self.server if ctx is None else ctx
         try:
             body = _read_json_body(self)
             windows = body["windows"]
@@ -115,16 +159,21 @@ class Handler(BaseHTTPRequestHandler):
         try:
             # the FFTs run outside the lock, so a big fit never blocks /detect;
             # only swapping the model in (and saving it) happens inside it
-            prepared = self.server.detector.prepare_fit(windows)
-            with self.server.lock:
-                self.server.detector.adopt(prepared)
-                if self.server.baseline_path is not None:
+            prepared = ctx.detector.prepare_fit(windows)
+            if registry_key is not None:
+                ctx = self.server.registry.insert(registry_key, ctx.detector)
+            with ctx.lock:
+                ctx.detector.adopt(prepared)
+                if ctx.baseline_path is not None:
                     # The fitted baseline used to live only in memory -
                     # persist it now, inside the
                     # same lock, so a concurrent GET /stats or POST
                     # /detect never observes a fit that hasn't actually
                     # been saved yet.
-                    save_baseline(self.server.baseline_path, self.server.detector.baseline, self.server.detector.model_version)
+                    save_baseline(ctx.baseline_path, ctx.detector.baseline, ctx.detector.model_version)
+        except RegistryFull as e:
+            _write_json(self, 409, {"error": str(e)})
+            return
         except (BaselineError, ValueError, TypeError, OverflowError) as e:
             # BaselineError covers fit_baseline()'s own checks (too few
             # windows, mismatched lengths); the plain ValueError alongside
@@ -145,7 +194,8 @@ class Handler(BaseHTTPRequestHandler):
             return
         _write_json(self, 200, {"status": "fitted", "windowCount": len(windows)})
 
-    def _handle_detect(self) -> None:
+    def _handle_detect(self, ctx: object = None) -> None:
+        ctx = self.server if ctx is None else ctx
         try:
             body = _read_json_body(self)
             window = body["window"]
@@ -155,8 +205,8 @@ class Handler(BaseHTTPRequestHandler):
             _write_json(self, 400, {"error": f"invalid request: {e}"})
             return
         try:
-            with self.server.lock:
-                verdict = self.server.detector.score(window)
+            with ctx.lock:
+                verdict = ctx.detector.score(window)
         except NotFittedError as e:
             _write_json(self, 409, {"error": str(e)})
             return
@@ -181,7 +231,8 @@ class Handler(BaseHTTPRequestHandler):
             },
         )
 
-    def _handle_drift_init(self) -> None:
+    def _handle_drift_init(self, ctx: object = None) -> None:
+        ctx = self.server if ctx is None else ctx
         try:
             body = _read_json_body(self)
             baseline_scores = body["baselineScores"]
@@ -196,25 +247,26 @@ class Handler(BaseHTTPRequestHandler):
         except (KeyError, ValueError, TypeError, OverflowError, json.JSONDecodeError, DriftMonitorError) as e:
             _write_json(self, 400, {"error": f"invalid drift monitor request: {e}"})
             return
-        with self.server.lock:
-            self.server.drift_monitor = monitor
+        with ctx.lock:
+            ctx.drift_monitor = monitor
             # the reference scores belong to the model that exists right now
-            self.server.drift_model_version = self.server.detector.model_version
+            ctx.drift_model_version = ctx.detector.model_version
         _write_json(self, 200, {"status": "initialized", "baselineMeanScore": monitor.baseline_mean_score})
 
-    def _handle_drift_observe(self) -> None:
+    def _handle_drift_observe(self, ctx: object = None) -> None:
+        ctx = self.server if ctx is None else ctx
         try:
             body = _read_json_body(self)
             score = float(body["score"])
         except (KeyError, ValueError, TypeError, OverflowError, json.JSONDecodeError) as e:
             _write_json(self, 400, {"error": f"invalid request: {e}"})
             return
-        with self.server.lock:
-            monitor = self.server.drift_monitor
+        with ctx.lock:
+            monitor = ctx.drift_monitor
             if monitor is None:
                 _write_json(self, 409, {"error": "drift monitor not initialized - call POST /drift/init first"})
                 return
-            if self.server.drift_model_version != self.server.detector.model_version:
+            if ctx.drift_model_version != ctx.detector.model_version:
                 _write_json(
                     self,
                     409,
@@ -246,10 +298,17 @@ class Handler(BaseHTTPRequestHandler):
         )
 
     def do_GET(self) -> None:  # noqa: N802
-        if urlparse(self.path).path == "/stats":
+        path = urlparse(self.path).path
+        if path == "/stats":
             with self.server.lock:
                 fitted = self.server.detector.is_fitted
             _write_json(self, 200, {"fitted": fitted, "window": self.server.detector.window, "writeProtected": bool(self.server.token)})
+        elif path == "/detectors":
+            # which series have a baseline: what a client needs before it scores one (the same openness as /detect)
+            if self.server.protect_reads and not _authorized(self):
+                _write_json(self, 401, {"error": "a valid bearer token is required for this operation"})
+                return
+            _write_json(self, 200, {"detectors": self.server.registry.listing()})
         else:
             _write_json(self, 404, {"error": "not found"})
 
@@ -267,8 +326,11 @@ class DetectorServer(ThreadingHTTPServer):
         baseline_path: Path | None = None,
         token: str | None = None,
         protect_reads: bool = False,
+        registry: DetectorRegistry | None = None,
     ) -> None:
         super().__init__(address, Handler)
+        # One detector per series (sourceId, kind, field), beside the shared one: see registry.py. Without one, the bound is the default and nothing is saved.
+        self.registry = registry if registry is not None else DetectorRegistry(lambda: AnomalyDetector(sample_rate=detector.sample_rate, threshold=detector.threshold, window=detector.window))
         # With protect_reads (and a token), POST /detect demands the token too; only GET /stats (the health path) stays open.
         self.protect_reads = protect_reads
         # With a token, POST /baseline/fit, /drift/init and /drift/observe demand it (/detect and GET /stats stay

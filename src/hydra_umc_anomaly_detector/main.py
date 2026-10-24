@@ -31,6 +31,7 @@ from .baseline import BaselineError, load_baseline, save_baseline
 from .datalake_client import DatalakeClient, DatalakeError, fetch_windows_checked
 from .fft import WINDOWS
 from .detector import AnomalyDetector
+from .registry import DEFAULT_MAX_DETECTORS, DetectorRegistry
 
 PROJECT_NAME = "HYDRA-UMC-ANOMALY-DETECTOR"
 ROLE = (
@@ -90,6 +91,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--train-start", type=int, default=None, help="first timestamp (unix ms) of the training history read from DATALAKE")
     parser.add_argument("--train-end", type=int, default=None, help="last timestamp (unix ms) of the training history read from DATALAKE")
     parser.add_argument("--max-train-points", type=int, default=200_000, help="most points read from DATALAKE for training (the read is paged, oldest first; reaching this is reported)")
+    parser.add_argument("--baseline-dir", default=None, help="Persist the baseline of each series (POST /detectors/{sourceId}/{kind}/{field}/fit) in this directory and restore them on startup.")
+    parser.add_argument("--max-series", type=int, default=DEFAULT_MAX_DETECTORS, help="most series that may have a detector of their own at once (default %(default)s)")
     parser.add_argument("--token-file", default=None, help="file with a bearer token demanded by POST /baseline/fit, /drift/init and /drift/observe (or the HYDRA_UMC_ANOMALY_TOKEN environment variable). Needed to bind a non-loopback address.")
     parser.add_argument("--protect-reads", action="store_true", default=os.environ.get("HYDRA_UMC_ANOMALY_PROTECT_READS", "") == "1", help="with a token, POST /detect demands it too (only GET /stats stays open); also HYDRA_UMC_ANOMALY_PROTECT_READS=1")
     args = parser.parse_args(argv)
@@ -157,11 +160,24 @@ def main(argv: list[str] | None = None) -> int:
     if args.protect_reads and not token:
         print("error: --protect-reads needs a token (--token-file or HYDRA_UMC_ANOMALY_TOKEN)", file=sys.stderr)
         return 2
-    server = DetectorServer((args.addr, args.port), detector, baseline_path, token=token, protect_reads=args.protect_reads)
+    if args.max_series < 1:
+        print("error: --max-series must be at least 1", file=sys.stderr)
+        return 2
+    registry = DetectorRegistry(
+        lambda: AnomalyDetector(sample_rate=args.sample_rate, threshold=args.threshold, window=args.window),
+        Path(args.baseline_dir) if args.baseline_dir else None,
+        args.max_series,
+    )
+    restored, problems = registry.restore_all()
+    if restored:
+        print(f"[anomaly-detector] restored the baseline of {restored} series from {args.baseline_dir}")
+    for problem in problems:
+        print(f"[anomaly-detector] WARNING: could not restore a series: {problem}", file=sys.stderr)
+    server = DetectorServer((args.addr, args.port), detector, baseline_path, token=token, protect_reads=args.protect_reads, registry=registry)
     print(f"[anomaly-detector] HTTP API listening on {args.addr}:{args.port} "
           f"(sample_rate={args.sample_rate}Hz, threshold={args.threshold}sigma, window={args.window}, "
           f"{'reads and writes' if args.protect_reads else 'writes'} {'need a token' if token else 'open (loopback only)'})")
-    print("[anomaly-detector] POST /baseline/fit, POST /detect, GET /stats")
+    print("[anomaly-detector] POST /baseline/fit, POST /detect, GET /stats; one detector per series: POST /detectors/{sourceId}/{kind}/{field}/fit|detect|drift/init|drift/observe, GET /detectors")
     try:
         server.serve_forever()
     except KeyboardInterrupt:

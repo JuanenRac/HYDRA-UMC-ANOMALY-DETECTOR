@@ -28,7 +28,7 @@
 |---|---|
 | Version | `0.1.7` |
 | Reifegrad | Funktionsfähig |
-| Tests | 89 (`pytest tests/`) |
+| Tests | 112 (`pytest tests/`) |
 | Technik | Python / FFT / statistical baseline detection |
 | Ziel | Der Raspberry Pi CM5 einer HYDRA-UMC-Zelle |
 | Auf echter Hardware | Noch nicht: für diese Version ist kein Lauf auf echter Hardware vermerkt |
@@ -40,6 +40,7 @@
 Ziel ist es, den "digitalen Fingerabdruck" jedes Motors und Werkzeugkopfs zu überwachen, damit Lagerverschleiß, lose Riemen oder Kühlungsausfälle Wochen im Voraus erkannt werden könnten und eine geplante Wartung statt Notreparaturen möglich wird (geplant: Code zur Ausfallvorhersage existiert noch nicht).
 
 ### Hauptmerkmale:
+* **Ein Detektor pro Reihe (`/detectors/{sourceId}/{kind}/{field}/...`).** Ein Motor und eine Spindel schwingen nicht gleich, und eine gemeinsame Referenz nannte die jeweils andere auffällig. `POST /detectors/{sourceId}/{kind}/{field}/fit` passt die Referenz dieser Reihe an (das Tripel, unter dem DATALAKE sie ablegt), `.../detect` bewertet ein Fenster dagegen, `.../drift/init` und `.../drift/observe` geben ihr einen eigenen Drift-Monitor, und `GET /detectors` listet die Reihen und ob jede angepasst ist. Eine Reihe entsteht mit ihrer ersten erfolgreichen Anpassung und es gibt höchstens `--max-series` (64); eine nie angepasste Reihe zu bewerten ergibt `409`, nie ein Urteil einer anderen Referenz; das Anpassen einer Reihe berührt nie eine andere oder die gemeinsame. Schreiben verlangt das Token wie die gemeinsame Referenz, Bewerten nur mit `--protect-reads`. `--baseline-dir` speichert eine Referenz pro Reihe und stellt sie beim Start wieder her. Die ursprünglichen Routen bleiben unverändert. *(implementiert, getestet in `tests/test_series.py`)*
 * **Auch Lesezugriffe lassen sich schützen (`--protect-reads`).** Ist ein Token gesetzt, verlangt auch `POST /detect` `Authorization: Bearer <token>` (`--protect-reads` oder `HYDRA_UMC_ANOMALY_PROTECT_READS=1`; setzt ein Token voraus); nur `GET /stats`, der Health-Pfad, bleibt offen. Standardmäßig aus, weil DASHBOARD-AI und die übrigen Aufrufer von `/detect` noch kein Token senden.
 * 🔍 **Signaturanalyse:** FFT (Fast Fourier Transform) von Motorstrom-Messwerten zur Erkennung mechanischer Unwuchten. *(implementiert)*
 * 📉 **Vorausschauende Wartung:** RUL-Schätzung (Remaining Useful Life) für NEMA-Motoren und URTC-Werkzeuge - angestrebt, dafür existiert in diesem Repository noch kein Code.
@@ -90,6 +91,7 @@ HYDRA-UMC-ANOMALY-DETECTOR/
 │   ├── metrics.py                   # Echte Precision/Recall/F1-Werte über eine gelabelte Fixture
 │   ├── drift.py                     # Echte Drift-Erkennung über gleitenden Mittelwert
 │   ├── datalake_client.py            # Holt zeitstempel-geordnete Punkte aus HYDRA-UMC-DATALAKE und teilt sie in Fenster fester Länge
+│   ├── registry.py                   # Ein Detektor pro (sourceId, kind, field): begrenzt, gespeichert nach dem Digest des Schlüssels
 │   ├── api.py                        # Einfache JSON/HTTP-Handler, die den Detektor umschließen
 │   └── main.py                       # Einstiegspunkt: verbindet alles, startet den HTTP-Server
 ├── tests/                   # pytest - FFT-Korrektheit, Baseline-Statistik, echte Fehlererkennung, Metriken, simulierte Drift

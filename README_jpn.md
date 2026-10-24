@@ -28,7 +28,7 @@
 |---|---|
 | バージョン | `0.1.7` |
 | 成熟度 | 機能する |
-| テスト | 89 (`pytest tests/`) |
+| テスト | 112 (`pytest tests/`) |
 | 技術 | Python / FFT / statistical baseline detection |
 | 対象 | HYDRA-UMC セルの Raspberry Pi CM5 |
 | 実機での確認 | まだです：このバージョンについて実機での動作記録はありません |
@@ -40,6 +40,7 @@
 すべてのモーターとツールヘッドの「デジタル指紋」を監視し、軸受の摩耗、ベルトの緩み、冷却系の故障を数週間前から見つけて、緊急修理ではなく計画的な保守を可能にすることを目指しています(計画中:故障予測のコードはまだありません)。
 
 ### 主な機能：
+* **系列ごとに 1 つの検知器(`/detectors/{sourceId}/{kind}/{field}/...`)。** モーターと主軸は同じようには振動せず、共有のベースライン 1 つでは一方がもう一方を異常と判定していました。`POST /detectors/{sourceId}/{kind}/{field}/fit` はその系列(DATALAKE が保存するときの 3 つ組)のベースラインを学習し、`.../detect` はそれに対してウィンドウを採点し、`.../drift/init` と `.../drift/observe` は専用のドリフト監視を与え、`GET /detectors` は系列と学習済みかどうかを一覧します。系列は最初に成功した学習で作られ、最大 `--max-series`(64)件です。一度も学習していない系列の採点は `409` で、別のベースラインによる判定にはなりません。ある系列の学習が別の系列や共有のものに触れることはありません。書き込みは共有ベースラインと同じくトークンが必要で、採点は `--protect-reads` のときだけ必要です。`--baseline-dir` は系列ごとにベースラインを保存し、起動時に復元します。従来のルートは変わりません。*(実装済み、`tests/test_series.py` でテスト済み)*
 * **読み取りも保護できます（`--protect-reads`）。** トークンを設定すると、`POST /detect` も `Authorization: Bearer <token>` を要求します（`--protect-reads` または `HYDRA_UMC_ANOMALY_PROTECT_READS=1`、トークンが必要）。ヘルスパスの `GET /stats` だけは開いたままです。DASHBOARD-AI など `/detect` の呼び出し元がまだトークンを送らないため、既定では無効です。
 * 🔍 **特徴分析：** モーター電流サンプルの FFT（高速フーリエ変換）による機械的不均衡の検知。*(実装済み)*
 * 📉 **予知保全：** NEMA モーターと URTC 工具向けの RUL（残存有効寿命）推定——構想段階であり、本リポジトリにはまだこのためのコードは存在しない。
@@ -92,6 +93,7 @@ HYDRA-UMC-ANOMALY-DETECTOR/
 │   ├── metrics.py                   # ラベル付きフィクスチャに基づく本物の precision/recall/F1
 │   ├── drift.py                     # 移動平均による本物のドリフト検知
 │   ├── datalake_client.py            # HYDRA-UMC-DATALAKE からタイムスタンプ順のポイントを取得し、固定長ウィンドウに分割
+│   ├── registry.py                   # (sourceId, kind, field) ごとに 1 つの検知器:上限あり、キーのダイジェストで保存
 │   ├── api.py                        # detector を包む単純な JSON/HTTP ハンドラー
 │   └── main.py                       # エントリポイント：すべてを接続し、HTTP サーバーを起動
 ├── tests/                   # pytest - FFT の正しさ、baseline の統計、実際の故障検知、メトリクス、シミュレートされたドリフト

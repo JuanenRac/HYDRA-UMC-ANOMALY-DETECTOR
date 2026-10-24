@@ -28,7 +28,7 @@
 |---|---|
 | Versão | `0.1.7` |
 | Maturidade | Funcional |
-| Testes | 89 (`pytest tests/`) |
+| Testes | 112 (`pytest tests/`) |
 | Tecnologia | Python / FFT / statistical baseline detection |
 | Destino | O Raspberry Pi CM5 de uma célula HYDRA-UMC |
 | Em hardware real | Ainda não: não há registo de execução em hardware real para esta versão |
@@ -40,6 +40,7 @@ O **HYDRA-UMC-ANOMALY-DETECTOR** destina-se a ser o guardião proativo da saúde
 O objetivo é monitorizar a "impressão digital" de cada motor e cabeça de ferramenta para poder identificar desgaste de rolamentos, correias soltas ou falhas de arrefecimento com semanas de antecedência, permitindo uma manutenção programada em vez de reparações de emergência (previsto: ainda não existe código de previsão de falhas).
 
 ### Funcionalidades principais:
+* **Um detetor por série (`/detectors/{sourceId}/{kind}/{field}/...`).** Um motor e um fuso não vibram da mesma maneira, e uma única linha de base partilhada chamava anómalo ao outro. `POST /detectors/{sourceId}/{kind}/{field}/fit` ajusta a linha de base dessa série (o trio sob o qual o DATALAKE a guarda), `.../detect` pontua uma janela contra ela, `.../drift/init` e `.../drift/observe` dão-lhe o seu próprio monitor de deriva, e `GET /detectors` lista as séries e se cada uma está ajustada. Uma série é criada pelo seu primeiro ajuste bem-sucedido e há no máximo `--max-series` (64); pontuar uma série nunca ajustada dá `409`, nunca um veredicto de outra linha de base; ajustar uma série nunca toca noutra nem na partilhada. Escrever exige o token como a linha de base partilhada, pontuar só com `--protect-reads`. `--baseline-dir` guarda uma linha de base por série e restaura-as no arranque. As rotas originais não mudam. *(implementado, testado em `tests/test_series.py`)*
 * **As leituras também podem ser protegidas (`--protect-reads`).** Com um token definido, `POST /detect` também exige `Authorization: Bearer <token>` (`--protect-reads` ou `HYDRA_UMC_ANOMALY_PROTECT_READS=1`; precisa de um token); só `GET /stats`, o caminho de saúde, fica aberto. Desativado por omissão, porque o DASHBOARD-AI e os restantes chamadores de `/detect` ainda não enviam token.
 * 🔍 **Análise de assinatura:** FFT (Transformada Rápida de Fourier) de amostras da corrente dos motores para detetar desequilíbrio mecânico. *(implementado)*
 * 📉 **Manutenção preditiva:** estimativa da RUL (vida útil restante) para motores NEMA e ferramentas URTC - aspiracional, ainda não existe código para isto neste repositório.
@@ -90,6 +91,7 @@ HYDRA-UMC-ANOMALY-DETECTOR/
 │   ├── metrics.py                   # Precisão/recuperação/F1 reais sobre um conjunto etiquetado
 │   ├── drift.py                     # Deteção real de deriva por média móvel
 │   ├── datalake_client.py            # Obtém pontos ordenados por tempo do HYDRA-UMC-DATALAKE e divide-os em janelas de comprimento fixo
+│   ├── registry.py                   # Um detetor por (sourceId, kind, field): limitado, guardado pelo resumo da chave
 │   ├── api.py                        # Handlers JSON/HTTP simples que envolvem o detetor
 │   └── main.py                       # Ponto de entrada: liga tudo e arranca o servidor HTTP
 ├── tests/                   # pytest - correção da FFT, estatísticas da linha de base, deteção real de falhas, métricas, deriva simulada

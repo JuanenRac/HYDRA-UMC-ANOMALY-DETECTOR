@@ -124,6 +124,10 @@ class AnomalyDetector:
         return self._window
 
     @property
+    def sample_rate(self) -> float:
+        return self._sample_rate
+
+    @property
     def baseline(self) -> Baseline | None:
         return self._baseline
 

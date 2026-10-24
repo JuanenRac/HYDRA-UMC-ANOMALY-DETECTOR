@@ -47,6 +47,24 @@ Calling this again replaces the previous baseline - it is not additive. A drift 
 
 ---
 
+## One detector per series
+
+The routes above keep ONE shared baseline. A motor and a spindle do not vibrate alike, and a baseline fitted on one calls the other anomalous, so every operation also exists for a single series, named by the triple HYDRA-UMC-DATALAKE stores it under:
+
+| Route | Same as | Needs the token |
+|---|---|---|
+| `POST /detectors/{sourceId}/{kind}/{field}/fit` | `POST /baseline/fit` | yes |
+| `POST /detectors/{sourceId}/{kind}/{field}/detect` | `POST /detect` | only with `--protect-reads` |
+| `POST /detectors/{sourceId}/{kind}/{field}/drift/init` | `POST /drift/init` | yes |
+| `POST /detectors/{sourceId}/{kind}/{field}/drift/observe` | `POST /drift/observe` | yes |
+| `GET /detectors` | - | only with `--protect-reads` |
+
+`GET /detectors` answers `{"detectors": [{"sourceId", "kind", "field", "fitted", "modelVersion"}, ...]}`. Each of the three names is 1 to 96 characters of letters, digits, dot, dash, colon or underscore, starting with a letter or a digit (anything else is a `400`); the names are URL-decoded.
+
+A series is created by its first successful fit. A fit that fails (`400`) takes no place; when `--max-series` (default 64) series already exist a new one is refused with `409`, and an existing one can always be refitted. Scoring a series that has no baseline is `409` ("fit it first"), never a verdict from another baseline. Each series has its own model version, its own drift monitor (a refit of one series invalidates only its own monitor) and its own lock, so working on one never waits for another. With `--baseline-dir DIR` each series saves its baseline (`<digest>.npz` and `<digest>.key.json`, the digest of the key: a name never becomes a path) and they are restored at start; one that cannot be restored is reported and skipped.
+
+---
+
 ## `POST /detect`
 
 Scores one live signal window against the fitted baseline.

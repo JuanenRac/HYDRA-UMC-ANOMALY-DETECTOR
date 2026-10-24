@@ -28,7 +28,7 @@
 |---|---|
 | Version | `0.1.7` |
 | Maturity | Functional |
-| Tests | 89 (`pytest tests/`) |
+| Tests | 112 (`pytest tests/`) |
 | Stack | Python / FFT / statistical baseline detection |
 | Target | The Raspberry Pi CM5 of a HYDRA-UMC cell |
 | On real hardware | Not yet: no run on real hardware is recorded for this version |
@@ -40,6 +40,7 @@
 The aim is to monitor the "digital fingerprint" of every motor and tool head so that bearing wear, loose belts or cooling failures could be spotted weeks in advance, enabling scheduled maintenance instead of emergency repairs (planned: no failure-prediction code exists yet).
 
 ### Key Features:
+* **One detector per series (`/detectors/{sourceId}/{kind}/{field}/...`).** A motor and a spindle do not vibrate alike, and one shared baseline called the other one anomalous. `POST /detectors/{sourceId}/{kind}/{field}/fit` fits the baseline of that series (the triple DATALAKE stores it under), `.../detect` scores a window against it, `.../drift/init` and `.../drift/observe` give it its own drift monitor, and `GET /detectors` lists the series and whether each is fitted. A series is created by its first successful fit and holds at most `--max-series` (64); scoring a series that was never fitted is `409`, never a verdict from another baseline; fitting a series never touches another or the shared one. Writing needs the token like the shared baseline, scoring only with `--protect-reads`. `--baseline-dir` saves one baseline per series and restores them at start. The original routes are unchanged. *(implemented, tested in `tests/test_series.py`)*
 * **Reads can be protected too (`--protect-reads`).** With a token set, `POST /detect` also demands `Authorization: Bearer <token>` (`--protect-reads` or `HYDRA_UMC_ANOMALY_PROTECT_READS=1`; it needs a token); only `GET /stats`, the health path, stays open. Off by default, because DASHBOARD-AI and the other callers of `/detect` do not send a token yet.
 * 🔍 **Signature Analysis:** FFT (Fast Fourier Transform) of motor current samples to detect mechanical imbalance. *(implemented)*
 * 📉 **Predictive Maintenance:** RUL (Remaining Useful Life) estimation for NEMA motors and URTC tools - aspirational, no code for it exists in this repo yet.
@@ -90,6 +91,7 @@ HYDRA-UMC-ANOMALY-DETECTOR/
 │   ├── metrics.py                   # Real precision/recall/F1 over a labeled fixture
 │   ├── drift.py                     # Real rolling-mean drift detection
 │   ├── datalake_client.py            # Pulls timestamp-ordered points from HYDRA-UMC-DATALAKE, chunks them into fixed-length windows
+│   ├── registry.py                   # One detector per (sourceId, kind, field): bounded, persisted by key digest
 │   ├── api.py                        # Plain JSON/HTTP handlers wrapping the detector
 │   └── main.py                       # Entry point: wires everything, starts the HTTP server
 ├── tests/                   # pytest - FFT correctness, baseline stats, real fault detection, metrics, simulated drift
