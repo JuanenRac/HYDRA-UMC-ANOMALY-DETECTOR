@@ -2,22 +2,33 @@
 
 All notable changes to this project are documented here.
 
-## [Unreleased]
+## [0.1.8] - Continuous service mode (`--follow-config FILE`) and one detector per series
+
+### Firmware and protocol
 
 - **Continuous service mode (`--follow-config FILE`).** The detector can follow the series named in a JSON file: it reads each one from DATALAKE as it grows, cuts it wherever the sampling is irregular, scores every complete window with the detector of that series, writes the verdict back as a sample of kind `anomaly_score` and, with `mqtt` configured, publishes a retained state message on every change of state and an alarm for every anomalous window (`follower.py`, a minimal MQTT 3.1.1 publisher in `mqtt_publish.py`, no new dependency). `GET /stats` shows how the loop is doing. The DATALAKE client now sends the read and ingest tokens of the roles and can write a sample.
-- A `Dockerfile` like the rest of the family (a non-root user, a volume for the baselines, a health check); inside a container the service needs its bearer token, as it does for any address that is not loopback.
+
+### Programs and windows
+
 - Realistic fixtures (`tests/realistic_signals.py`: wandering speed, changing load, a second harmonic, pink noise) and a measurement of the false alarm rate: with a few hundred training windows a healthy machine never reaches the default threshold, with only 20 windows and a very variable machine 1 to 12 healthy windows in a hundred are flagged (a test records that, and the aim of under 0.1 % is an expected failure until the threshold follows the variation of the machine).
 - The README no longer says the interfaces cannot reach the detector over CORS: DASHBOARD-AI reads it through HYDRA-UMC-SERVER, same origin.
-- **One detector per series.** `POST /detectors/{sourceId}/{kind}/{field}/fit`, `.../detect`, `.../drift/init`, `.../drift/observe` and `GET /detectors` give each series its own baseline, model version, drift monitor and lock, because a motor and a spindle do not vibrate alike and one shared baseline called the other anomalous. A series is created by its first successful fit (a failed fit takes no place), at most `--max-series` (default 64) exist, scoring a series that was never fitted is `409` and never a verdict from another baseline, and fitting a series never touches another or the shared one. Writing needs the token, scoring only with `--protect-reads`. `--baseline-dir` saves one baseline per series (named by a digest of the key, so a name never becomes a path) and restores them at start. The original routes are unchanged. `AnomalyDetector.sample_rate` is now a property. 23 new tests (112 in all).
-- **Reads are protected by default.** Whenever a token is set, `POST /detect` (and the per-series scoring and listing routes) demand the Bearer token as the writing routes do; only `GET /stats` stays open. `--no-protect-reads` or `HYDRA_UMC_ANOMALY_PROTECT_READS=0` leave reads open on purpose, `HYDRA_UMC_ANOMALY_PROTECT_READS=1` refuses to start without a token, and without a token (loopback only) there is nothing to demand.
 - **An optional Hann window** (`--window hann`; the default `none` is the original behaviour): the mean is removed, a periodic Hann window is applied before the FFT and the magnitudes are scaled so a sine of amplitude A peaks near A. A frequency between two bins leaks far less. The numbers differ, so a baseline remembers the window it was made with (older files load as `none`), a detector refuses to restore a baseline made with another window, `GET /stats` reports the window, and the threshold has to be recalibrated with real healthy recordings before Hann is trusted.
 - **The training history from DATALAKE is looked at, not only read**: `fetch_windows_checked()` pages the read (DATALAKE answers the oldest points first, up to its limit), removes repeated timestamps, cuts the series wherever two neighbours are not about `1/sample-rate` apart and makes windows inside each uninterrupted run only; it says how many points, pages, repeats, cuts and dropped samples there were, and when it stopped at `--max-train-points`. New `--train-start`, `--train-end` and `--max-train-points`.
-- **A bearer token for the writing routes**: `--token-file` (or `HYDRA_UMC_ANOMALY_TOKEN`, at least 16 characters) makes `POST /baseline/fit`, `/drift/init` and `/drift/observe` demand it; `/detect` and `GET /stats` stay open. A non-loopback `--addr` is refused without a token.
+
+### Tests, builds and checks
+
+- A `Dockerfile` like the rest of the family (a non-root user, a volume for the baselines, a health check); inside a container the service needs its bearer token, as it does for any address that is not loopback.
+- **One detector per series.** `POST /detectors/{sourceId}/{kind}/{field}/fit`, `.../detect`, `.../drift/init`, `.../drift/observe` and `GET /detectors` give each series its own baseline, model version, drift monitor and lock, because a motor and a spindle do not vibrate alike and one shared baseline called the other anomalous. A series is created by its first successful fit (a failed fit takes no place), at most `--max-series` (default 64) exist, scoring a series that was never fitted is `409` and never a verdict from another baseline, and fitting a series never touches another or the shared one. Writing needs the token, scoring only with `--protect-reads`. `--baseline-dir` saves one baseline per series (named by a digest of the key, so a name never becomes a path) and restores them at start. The original routes are unchanged. `AnomalyDetector.sample_rate` is now a property. 23 new tests (112 in all).
 - 14 new tests (87 in all).
 - Building no longer changes the version; raising it is the explicit `bump` command (`python tools/hydra_project_tool.py bump`). The build scripts only report the version they built, and CI fails if a build script runs a bump.
 - The build and run scripts use the Python of the `.venv` directly instead of an activate script, and create the venv with the `py` launcher when there is one; CI fails if a script activates a venv.
-- The banner follows the animated style of the ecosystem banners, with the name, the kind and the technologies of the project.
 - Added `tools/hydra_project_tool.py`: the same `validate`, `test`, `version`, `status` and `bump` commands in every repository. The checks run with `HYDRA_UMC_CI=1` and fail if the version changes; only `bump` changes it.
+
+### Other changes
+
+- **Reads are protected by default.** Whenever a token is set, `POST /detect` (and the per-series scoring and listing routes) demand the Bearer token as the writing routes do; only `GET /stats` stays open. `--no-protect-reads` or `HYDRA_UMC_ANOMALY_PROTECT_READS=0` leave reads open on purpose, `HYDRA_UMC_ANOMALY_PROTECT_READS=1` refuses to start without a token, and without a token (loopback only) there is nothing to demand.
+- **A bearer token for the writing routes**: `--token-file` (or `HYDRA_UMC_ANOMALY_TOKEN`, at least 16 characters) makes `POST /baseline/fit`, `/drift/init` and `/drift/observe` demand it; `/detect` and `GET /stats` stay open. A non-loopback `--addr` is refused without a token.
+- The banner follows the animated style of the ecosystem banners, with the name, the kind and the technologies of the project.
 
 ## [0.1.7]
 

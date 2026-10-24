@@ -26,9 +26,9 @@
 
 | | |
 |---|---|
-| バージョン | `0.1.7` |
+| バージョン | `0.1.8` |
 | 成熟度 | 機能する |
-| テスト | 155 (`pytest tests/`) |
+| テスト | 73 (`pytest tests/`) |
 | 技術 | Python / FFT / statistical baseline detection |
 | 対象 | HYDRA-UMC セルの Raspberry Pi CM5 |
 | 実機での確認 | まだです：このバージョンについて実機での動作記録はありません |
