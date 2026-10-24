@@ -302,7 +302,10 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/stats":
             with self.server.lock:
                 fitted = self.server.detector.is_fitted
-            _write_json(self, 200, {"fitted": fitted, "window": self.server.detector.window, "writeProtected": bool(self.server.token)})
+            stats = {"fitted": fitted, "window": self.server.detector.window, "writeProtected": bool(self.server.token)}
+            if self.server.follower_snapshot is not None:
+                stats["follower"] = self.server.follower_snapshot()
+            _write_json(self, 200, stats)
         elif path == "/detectors":
             # which series have a baseline: what a client needs before it scores one (the same openness as /detect)
             if self.server.protect_reads and not _authorized(self):
@@ -330,6 +333,8 @@ class DetectorServer(ThreadingHTTPServer):
     ) -> None:
         super().__init__(address, Handler)
         # One detector per series (sourceId, kind, field), beside the shared one: see registry.py. Without one, the bound is the default and nothing is saved.
+        # Set by the command when the continuous service mode runs: what GET /stats shows of it.
+        self.follower_snapshot = None
         self.registry = registry if registry is not None else DetectorRegistry(lambda: AnomalyDetector(sample_rate=detector.sample_rate, threshold=detector.threshold, window=detector.window))
         # With protect_reads (and a token), POST /detect demands the token too; only GET /stats (the health path) stays open.
         # None (the default) means protected whenever a token is set: there is nothing to demand without one.

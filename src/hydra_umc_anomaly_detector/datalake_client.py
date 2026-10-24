@@ -58,8 +58,14 @@ class DatalakeClient:
         max_attempts: int = 3,
         retry_delay_seconds: float = 0.5,
         sleep: Callable[[float], None] = time.sleep,
+        read_token: str | None = None,
+        ingest_token: str | None = None,
     ) -> None:
         self.base_url = base_url.rstrip("/")
+        # DATALAKE asks for a bearer token per role when it has one configured (read for GET /query, ingest for POST /ingest);
+        # a client without one still works against a DATALAKE that has none.
+        self.read_token = read_token or None
+        self.ingest_token = ingest_token or None
         self.timeout_s = timeout_s
         # Same reasoning as HYDRA-UMC-PRODUCTION-REPORTS' own client: a
         # timeout alone doesn't cover a transient network hiccup (a
@@ -76,7 +82,8 @@ class DatalakeClient:
         last_error: urllib.error.URLError | None = None
         for attempt in range(1, self.max_attempts + 1):
             try:
-                with urllib.request.urlopen(url, timeout=self.timeout_s) as resp:
+                request = urllib.request.Request(url, headers={"Authorization": f"Bearer {self.read_token}"} if self.read_token else {})
+                with urllib.request.urlopen(request, timeout=self.timeout_s) as resp:
                     return json.loads(resp.read())
             except urllib.error.HTTPError as e:
                 body = e.read().decode("utf-8", errors="replace")
@@ -88,6 +95,22 @@ class DatalakeClient:
         raise DatalakeError(
             f"could not reach DATALAKE at {self.base_url} after {self.max_attempts} attempts: {last_error.reason}"
         ) from last_error
+
+    def ingest(self, *, source_id: str, kind: str, timestamp: int, fields: dict[str, float]) -> None:
+        """Writes one sample (POST /ingest). Not retried: the follower tries again with the next window, and DATALAKE's point
+        identity makes a repeated write harmless."""
+        body = json.dumps({"sourceId": source_id, "kind": kind, "timestamp": timestamp, "fields": fields}).encode("utf-8")
+        headers = {"Content-Type": "application/json"}
+        if self.ingest_token:
+            headers["Authorization"] = f"Bearer {self.ingest_token}"
+        request = urllib.request.Request(f"{self.base_url}/ingest", data=body, headers=headers, method="POST")
+        try:
+            with urllib.request.urlopen(request, timeout=self.timeout_s) as resp:
+                resp.read()
+        except urllib.error.HTTPError as e:
+            raise DatalakeError(f"DATALAKE returned HTTP {e.code} for /ingest: {e.read().decode('utf-8', errors='replace')}") from e
+        except urllib.error.URLError as e:
+            raise DatalakeError(f"could not reach DATALAKE at {self.base_url}: {e.reason}") from e
 
     def query(
         self,
@@ -149,6 +172,22 @@ class WindowFetch:
         return text
 
 
+def split_runs(points: list[Point], sample_rate: float, tolerance: float = 0.5) -> list[list[Point]]:
+    """Cuts a series (ascending timestamps in milliseconds) wherever two neighbours are not about 1/sample_rate apart, so each run is
+    evenly sampled. Always returns at least one run (possibly empty)."""
+    period_ms = 1000.0 / sample_rate
+    low, high = period_ms * (1.0 - tolerance), period_ms * (1.0 + tolerance)
+    runs: list[list[Point]] = []
+    current: list[Point] = []
+    for index, point in enumerate(points):
+        if index and not low <= point.timestamp - points[index - 1].timestamp <= high:
+            runs.append(current)
+            current = []
+        current.append(point)
+    runs.append(current)
+    return runs
+
+
 def fetch_windows_checked(
     client: DatalakeClient,
     *,
@@ -206,18 +245,9 @@ def fetch_windows_checked(
             break
         cursor = page[-1].timestamp + 1
 
-    period_ms = 1000.0 / sample_rate
-    low, high = period_ms * (1.0 - tolerance), period_ms * (1.0 + tolerance)
-    runs: list[list[float]] = []
-    current: list[float] = []
-    gaps = 0
-    for index, point in enumerate(points):
-        if index and not low <= point.timestamp - points[index - 1].timestamp <= high:
-            gaps += 1
-            runs.append(current)
-            current = []
-        current.append(point.value)
-    runs.append(current)
+    point_runs = split_runs(points, sample_rate, tolerance)
+    gaps = len(point_runs) - 1
+    runs = [[p.value for p in run] for run in point_runs]
 
     windows: list[list[float]] = []
     dropped = 0

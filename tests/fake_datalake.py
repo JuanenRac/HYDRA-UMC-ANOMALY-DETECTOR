@@ -27,11 +27,31 @@ class _Handler(BaseHTTPRequestHandler):
     def log_message(self, format: str, *args: object) -> None:  # noqa: A002
         pass
 
+    def do_POST(self) -> None:  # noqa: N802
+        if urlparse(self.path).path != "/ingest":
+            self.send_response(404)
+            self.end_headers()
+            return
+        length = int(self.headers.get("Content-Length", "0"))
+        body = json.loads(self.rfile.read(length) or b"{}")
+        self.server.ingested.append({"body": body, "authorization": self.headers.get("Authorization")})
+        if self.server.fail_ingest:
+            self.send_response(503)
+            self.end_headers()
+            return
+        reply = b"{}"
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(reply)))
+        self.end_headers()
+        self.wfile.write(reply)
+
     def do_GET(self) -> None:  # noqa: N802
         parsed = urlparse(self.path)
         params = {k: v[0] for k, v in parse_qs(parsed.query).items()}
 
         if parsed.path == "/query":
+            self.server.query_authorizations.append(self.headers.get("Authorization"))
             points = self.server.points
             if "sourceId" in params:
                 points = [p for p in points if p["sourceId"] == params["sourceId"]]
@@ -64,6 +84,9 @@ class FakeDatalakeServer(ThreadingHTTPServer):
     def __init__(self, address: tuple[str, int]) -> None:
         super().__init__(address, _Handler)
         self.points: list[dict] = []
+        self.ingested: list[dict] = []  # what POST /ingest received, with the Authorization header it came with
+        self.query_authorizations: list[str | None] = []
+        self.fail_ingest = False
 
 
 @contextmanager

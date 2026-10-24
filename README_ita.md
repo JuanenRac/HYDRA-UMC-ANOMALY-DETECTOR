@@ -28,7 +28,7 @@
 |---|---|
 | Versione | `0.1.7` |
 | Maturità | Funzionale |
-| Test | 112 (`pytest tests/`) |
+| Test | 155 (`pytest tests/`) |
 | Tecnologia | Python / FFT / statistical baseline detection |
 | Destinazione | Il Raspberry Pi CM5 di una cella HYDRA-UMC |
 | Su hardware reale | Non ancora: per questa versione non risulta alcuna esecuzione su hardware reale |
@@ -44,7 +44,8 @@ L'obiettivo è monitorare l'«impronta digitale» di ogni motore e testina dello
 * **Le letture sono protette per impostazione predefinita (`--protect-reads`).** Con un token impostato, anche `POST /detect` richiede `Authorization: Bearer <token>`; solo `GET /stats`, il percorso di salute, resta aperto. È il comportamento predefinito quando c'è un token (`--no-protect-reads` o `HYDRA_UMC_ANOMALY_PROTECT_READS=0` lasciano le letture aperte; `HYDRA_UMC_ANOMALY_PROTECT_READS=1` rifiuta di avviarsi senza token). Senza token (solo loopback) non c'è nulla da richiedere. Chi legge tramite HYDRA-UMC-SERVER invia già il token.
 * 🔍 **Analisi della firma:** FFT (Fast Fourier Transform) di campioni della corrente del motore per rilevare squilibri meccanici. *(implementato)*
 * 📉 **Manutenzione predittiva:** Stima RUL (Remaining Useful Life) per motori NEMA e strumenti URTC - aspirazionale, non esiste ancora codice per questo in questo repository.
-* 🚨 **Sistema di allerta precoce:** Mostrare avvisi direttamente nelle interfacce Studio e Watch - aspirazionale; oggi il rilevatore espone i propri verdetti solo tramite la propria semplice API HTTP (`api.py`), quelle interfacce non la interrogano ancora.
+* 🚨 **Sistema di allerta precoce:** Mostrare avvisi direttamente nelle interfacce Studio e Watch - aspirazionale; oggi il rilevatore espone i propri verdetti tramite la propria API HTTP e, in modalità continua, come campioni `anomaly_score` in DATALAKE e come messaggi MQTT. DASHBOARD-AI lo legge tramite HYDRA-UMC-SERVER (stessa origine, quindi il CORS non serve); le interfacce Studio e Watch non mostrano ancora i suoi allarmi.
+* **Modalità servizio continuo (`--follow-config FILE`).** Legge ogni serie configurata da DATALAKE mentre cresce, la taglia dove il campionamento è irregolare, valuta ogni finestra completa con il rilevatore di quella serie, riscrive il verdetto come campione di tipo `anomaly_score` e, con `mqtt` configurato, pubblica un messaggio di stato trattenuto quando una serie cambia stato e un allarme per ogni finestra anomala. Tutto ciò che si regola (serie, dimensione della finestra, intervallo, topic, broker) sta nel file JSON; un DATALAKE o un broker fermo viene contato in `GET /stats` e non ferma mai il ciclo. *(implementato; provato contro un finto DATALAKE HTTP reale e un finto broker TCP reale, mai eseguito contro i servizi veri)*
 * 🧬 **Apprendimento della baseline:** Adatta la propria baseline statistica dalla cronologia reale nota come sana del Datalake - non è apprendimento continuo in background, ma un riadattamento reale ed esplicito ogni volta che viene richiesto. *(implementato)*
 * 🏷️ **Versionamento del modello:** Ogni `Verdict` porta con sé la versione reale e monotona del modello e la soglia rispetto a cui è stato valutato - un riadattamento (refit) è un evento reale e tracciabile. Indica inoltre con quante finestre sane è stata calibrata la baseline, così un allarme è spiegabile e riproducibile. *(implementato)*
 * 📐 **Metriche di precisione/recall:** Precision/recall/F1 reali, calcolati su un fixture etichettato (`metrics.py`), non solo affermazioni in prosa sulla separazione dei punteggi. *(implementato)*
@@ -92,6 +93,8 @@ HYDRA-UMC-ANOMALY-DETECTOR/
 │   ├── drift.py                     # Rilevamento reale di deriva tramite media mobile
 │   ├── datalake_client.py            # Recupera i punti ordinati per timestamp da HYDRA-UMC-DATALAKE e li suddivide in finestre di lunghezza fissa
 │   ├── registry.py                   # Un rilevatore per (sourceId, kind, field): limitato, salvato per impronta della chiave
+│   ├── follower.py                   # Servizio continuo: legge le serie da DATALAKE, valuta, riscrive i verdetti, genera allarmi
+│   ├── mqtt_publish.py               # Publisher MQTT 3.1.1 minimale (QoS 0) per gli allarmi
 │   ├── api.py                        # Handler JSON/HTTP semplici che avvolgono il detector
 │   └── main.py                       # Punto di ingresso: collega tutto, avvia il server HTTP
 ├── tests/                   # pytest - correttezza FFT, statistiche del baseline, rilevamento reale di guasti, metriche, deriva simulata
@@ -103,6 +106,7 @@ HYDRA-UMC-ANOMALY-DETECTOR/
 ├── tools/
 │   ├── build_test.py        # Controllo build/compilazione senza incremento di versione
 │   └── ci_validate.py       # Validazione manifest/CHANGELOG/docs usata dalla CI
+├── Dockerfile               # Immagine container del servizio
 ├── build/                   # Output di build (ignorato da git)
 ├── pyproject.toml           # Metadati del pacchetto, versione, dipendenze (numpy)
 ├── bump_version.py          # Incremento di versione stile contachilometri (eseguito solo dal comando `bump` esplicito)

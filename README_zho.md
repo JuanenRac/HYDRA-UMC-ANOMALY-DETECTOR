@@ -28,7 +28,7 @@
 |---|---|
 | 版本 | `0.1.7` |
 | 成熟度 | 可用 |
-| 测试 | 112 (`pytest tests/`) |
+| 测试 | 155 (`pytest tests/`) |
 | 技术栈 | Python / FFT / statistical baseline detection |
 | 目标 | HYDRA-UMC 工作单元的 Raspberry Pi CM5 |
 | 真实硬件 | 尚未：此版本没有在真实硬件上运行的记录 |
@@ -45,7 +45,8 @@
 * **读取默认受保护（`--protect-reads`）。** 设置令牌后，`POST /detect` 也要求 `Authorization: Bearer <token>`；只有健康路径 `GET /stats` 保持开放。只要有令牌，这就是默认行为（`--no-protect-reads` 或 `HYDRA_UMC_ANOMALY_PROTECT_READS=0` 让读取保持开放；`HYDRA_UMC_ANOMALY_PROTECT_READS=1` 在没有令牌时拒绝启动）。没有令牌（仅回环）时无需要求。通过 HYDRA-UMC-SERVER 读取的调用方已经发送令牌。
 * 🔍 **特征分析：** 对电机电流样本进行 FFT（快速傅里叶变换）以检测机械不平衡。*(已实现)*
 * 📉 **预测性维护：** 面向 NEMA 电机和 URTC 工具的 RUL（剩余使用寿命）估算——仍属愿景,本仓库中目前还没有相关代码。
-* 🚨 **早期预警系统：** 直接在 Studio 和 Watch 界面显示告警——仍属愿景;目前该检测器仅通过自身简单的 HTTP API(`api.py`)暴露判定结果,这些界面尚未去轮询它。
+* 🚨 **早期预警系统：** 直接在 Studio 和 Watch 界面显示告警——仍属愿景;目前该检测器通过自身的 HTTP API 暴露判定结果,在持续模式下还会作为 DATALAKE 中的 `anomaly_score` 样本和 MQTT 消息发布。DASHBOARD-AI 通过 HYDRA-UMC-SERVER 读取它(同源,因此不需要 CORS);Studio 和 Watch 界面还不显示它的告警。
+* **持续服务模式(`--follow-config 文件`)。** 随着序列增长,从 DATALAKE 读取每个已配置的序列,在采样不规则之处把它切开,用该序列的检测器给每个完整窗口打分,把判定作为类型为 `anomaly_score` 的样本写回,并且在配置了 `mqtt` 时,在序列状态改变时发布保留的状态消息,对每个异常窗口发布一条告警。所有可调的内容(序列、窗口大小、间隔、主题、代理)都在 JSON 文件里;停机的 DATALAKE 或代理会在 `GET /stats` 中计数,但绝不会让循环停下。*(已实现;已对真实的 HTTP DATALAKE 替身和真实的 TCP 代理替身测试,从未对真实服务运行)*
 * 🧬 **基线学习：** 根据数据湖中真实的已知健康历史数据拟合其统计基线——并非后台持续学习,而是每次被请求时进行的真实、显式的重新拟合。*(已实现)*
 * 🏷️ **模型版本管理：** 每个 `Verdict` 都携带真实的、单调递增的模型版本以及对其评分所依据的阈值——一次重新拟合（refit）是一个真实的、可追溯的事件。它还会报告基线是用多少个健康窗口校准的，使告警可解释、可复现。*(已实现)*
 * 📐 **精确率/召回率指标：** 基于标注测试样本（`metrics.py`）计算得到的真实 precision/recall/F1，而非仅是关于分数分离度的文字描述。*(已实现)*
@@ -94,6 +95,8 @@ HYDRA-UMC-ANOMALY-DETECTOR/
 │   ├── drift.py                     # 真实的滚动均值漂移检测
 │   ├── datalake_client.py            # 从 HYDRA-UMC-DATALAKE 获取按时间戳排序的数据点，并切分为定长窗口
 │   ├── registry.py                   # 每个 (sourceId, kind, field) 一个检测器:有上限,按键的摘要持久化
+│   ├── follower.py                   # 持续服务模式:从 DATALAKE 读取序列、打分、写回判定并发出告警
+│   ├── mqtt_publish.py               # 用于告警的最小 MQTT 3.1.1 发布器(QoS 0)
 │   ├── api.py                        # 封装 detector 的简单 JSON/HTTP 处理器
 │   └── main.py                       # 入口点：连接一切，启动 HTTP 服务器
 ├── tests/                   # pytest——FFT 正确性、baseline 统计、真实故障检测、指标、模拟漂移
@@ -105,6 +108,7 @@ HYDRA-UMC-ANOMALY-DETECTOR/
 ├── tools/
 │   ├── build_test.py        # 不递增版本号的构建/编译检查
 │   └── ci_validate.py       # CI 使用的 manifest/CHANGELOG/docs 校验
+├── Dockerfile               # 服务的容器镜像
 ├── build/                   # 构建输出（已被 gitignore）
 ├── pyproject.toml           # 包元数据、版本、依赖项（numpy）
 ├── bump_version.py          # 里程表式版本递增（仅由显式 `bump` 命令运行）

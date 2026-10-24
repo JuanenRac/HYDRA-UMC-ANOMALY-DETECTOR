@@ -29,6 +29,8 @@ from . import __version__
 from .api import DetectorServer
 from .baseline import BaselineError, load_baseline, save_baseline
 from .datalake_client import DatalakeClient, DatalakeError, fetch_windows_checked
+from .follower import Follower, FollowConfigError, load_follow_config
+from .mqtt_publish import MqttPublisher
 from .fft import WINDOWS
 from .detector import AnomalyDetector
 from .registry import DEFAULT_MAX_DETECTORS, DetectorRegistry
@@ -38,6 +40,35 @@ ROLE = (
     "Anomaly-Detector - AI-driven predictive maintenance, FFT/spectrogram "
     "analysis of motor vibration signatures fed by HYDRA-UMC-DATALAKE."
 )
+
+
+def _secret(raw: dict, file_key: str, env_names: tuple[str, ...]) -> str | None:
+    """A token from the file the configuration names, else from the first environment variable that is set (or its _FILE twin)."""
+    path = raw.get(file_key)
+    if path is not None:
+        if not isinstance(path, str) or not path:
+            raise FollowConfigError(f"datalake.{file_key} must be the path of a file")
+        try:
+            return Path(path).read_text(encoding="utf-8").strip()
+        except (OSError, UnicodeDecodeError) as e:
+            raise FollowConfigError(f"cannot read datalake.{file_key}: {e}") from e
+    for name in env_names:
+        if os.environ.get(name):
+            return os.environ[name].strip()
+        file_name = os.environ.get(name + "_FILE")
+        if file_name:
+            try:
+                return Path(file_name).read_text(encoding="utf-8").strip()
+            except (OSError, UnicodeDecodeError) as e:
+                raise FollowConfigError(f"cannot read the file named by {name}_FILE: {e}") from e
+    return None
+
+
+def _follow_client(config, raw: dict) -> DatalakeClient:
+    section = raw.get("datalake", {})
+    read_token = _secret(section, "readTokenFile", ("HYDRA_UMC_DATALAKE_READ_TOKEN", "HYDRA_UMC_DATALAKE_TOKEN"))
+    ingest_token = _secret(section, "ingestTokenFile", ("HYDRA_UMC_DATALAKE_INGEST_TOKEN", "HYDRA_UMC_DATALAKE_TOKEN"))
+    return DatalakeClient(config.datalake_url, read_token=read_token, ingest_token=ingest_token)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -96,6 +127,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--token-file", default=None, help="file with a bearer token demanded by POST /baseline/fit, /drift/init and /drift/observe (or the HYDRA_UMC_ANOMALY_TOKEN environment variable). Needed to bind a non-loopback address.")
     parser.add_argument("--protect-reads", dest="protect_reads", action="store_true", default=None, help="POST /detect demands the token too (only GET /stats stays open). This is the default whenever a token is set; HYDRA_UMC_ANOMALY_PROTECT_READS=1 does the same and, unlike the default, refuses to start without a token")
     parser.add_argument("--no-protect-reads", dest="protect_reads", action="store_false", help="leave POST /detect open even though a token is set (HYDRA_UMC_ANOMALY_PROTECT_READS=0 does the same)")
+    parser.add_argument("--follow-config", default=None, help="continuous service mode: a JSON file naming the series to read from DATALAKE as they grow, score, write back and raise alarms for (see docs/API.md); every tuned value lives in that file")
     args = parser.parse_args(argv)
 
     token = os.environ.get("HYDRA_UMC_ANOMALY_TOKEN", "")
@@ -185,6 +217,21 @@ def main(argv: list[str] | None = None) -> int:
     for problem in problems:
         print(f"[anomaly-detector] WARNING: could not restore a series: {problem}", file=sys.stderr)
     server = DetectorServer((args.addr, args.port), detector, baseline_path, token=token, protect_reads=protect_reads, registry=registry)
+    follower_stop = None
+    if args.follow_config:
+        try:
+            follow_config, follow_raw = load_follow_config(args.follow_config)
+            client = _follow_client(follow_config, follow_raw)
+        except FollowConfigError as e:
+            print(f"error: --follow-config: {e}", file=sys.stderr)
+            server.server_close()
+            return 2
+        publisher = MqttPublisher(follow_config.mqtt) if follow_config.mqtt is not None else None
+        follower = Follower(follow_config, registry, client, sample_rate=args.sample_rate, publisher=publisher)
+        server.follower_snapshot = follower.snapshot
+        _, follower_stop = follower.start()
+        print(f"[anomaly-detector] following {len(follow_config.series)} series from {follow_config.datalake_url} every {follow_config.interval_s:g} s"
+              f" (verdicts {'written back as ' + follow_config.score_kind if follow_config.write_scores else 'not written back'}, alarms {'over MQTT' if publisher else 'not published'})")
     print(f"[anomaly-detector] HTTP API listening on {args.addr}:{args.port} "
           f"(sample_rate={args.sample_rate}Hz, threshold={args.threshold}sigma, window={args.window}, "
           f"{'reads and writes' if protect_reads else 'writes'} {'need a token' if token else 'open (loopback only)'})")
@@ -194,6 +241,8 @@ def main(argv: list[str] | None = None) -> int:
     except KeyboardInterrupt:
         pass
     finally:
+        if follower_stop is not None:
+            follower_stop.set()
         server.server_close()
         print("[anomaly-detector] shutting down")
     return 0

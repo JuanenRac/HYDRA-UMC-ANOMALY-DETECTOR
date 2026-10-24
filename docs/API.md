@@ -150,6 +150,45 @@ Records one real score and reports the current real drift state.
 
 ---
 
+## Continuous service mode (`--follow-config FILE`)
+
+Without it a verdict exists only when somebody posts a window. With it the detector follows the series named in a JSON file: every
+`intervalSeconds` it asks DATALAKE for the points after the last one it used, cuts them wherever the spacing is not about `1 / sample-rate`
+(a window over a hole describes the hole), and scores every complete window with the detector of that series. A series nobody fitted is
+reported once (`note: "not fitted"` in `GET /stats`) and scored as soon as it has a baseline.
+
+```json
+{
+  "datalake": {"url": "http://127.0.0.1:8095", "readTokenFile": "/etc/hydra-umc/anomaly-read.token", "ingestTokenFile": "/etc/hydra-umc/anomaly-ingest.token"},
+  "intervalSeconds": 5,
+  "maxWindowsPerTick": 20,
+  "writeScores": true,
+  "scoreKind": "anomaly_score",
+  "lookbackWindows": 2,
+  "gapTolerance": 0.5,
+  "topicPrefix": "hydra/anomaly",
+  "mqtt": {"host": "127.0.0.1", "port": 1883, "clientId": "hydra-umc-anomaly-detector", "tls": false, "caFile": null,
+           "usernameFile": null, "passwordFile": null, "allowPlaintext": false, "timeoutSeconds": 5},
+  "series": [{"sourceId": "spindle-1", "kind": "vibration", "field": "value", "windowSize": 512}]
+}
+```
+
+Only `datalake.url` and `series` are required. The DATALAKE tokens come from the files named there, or from `HYDRA_UMC_DATALAKE_READ_TOKEN` /
+`HYDRA_UMC_DATALAKE_INGEST_TOKEN` / `HYDRA_UMC_DATALAKE_TOKEN` (each also as `..._FILE`). The detector's own `--sample-rate` is the rate of every series.
+
+* **The verdict is written back** (`writeScores`) as a sample of kind `scoreKind` for the same `sourceId`, timestamped with the last sample of the window,
+  with the fields `<field>` (the score), `<field>_anomalous` (0 or 1) and `<field>_model` (the model version). A failed write is counted and does not
+  lose the verdict or stop the loop.
+* **MQTT** (when `mqtt` is present; QoS 0, a connection per message): a series that changes state publishes a *retained* JSON message to
+  `<topicPrefix>/<sourceId>/<kind>/<field>/state` (the first verdict counts as a change), and every anomalous window publishes one to
+  `.../alarm` (not retained). The message holds `sourceId`, `kind`, `field`, `timestamp`, `score`, `threshold`, `anomalous` and `modelVersion`.
+  A broker that is not on this machine needs `tls`, or `allowPlaintext` to say on purpose that plain text is fine; the user name and password
+  are read from files.
+* **`GET /stats`** gains a `follower` object: passes, windows scored, anomalies, DATALAKE / write / MQTT errors, and per series the last score,
+  state and note. A DATALAKE or broker that cannot be reached is counted and tried again at the next pass.
+
+---
+
 ## Errors
 
 Any other path/method returns `404 {"error": "not found"}`.
