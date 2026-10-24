@@ -120,7 +120,10 @@ HYDRA-UMC-ANOMALY-DETECTOR/
 │   └── hydra-umc-anomaly-detector.service # CM5 本地异常检测 API 的 systemd 单元
 ├── tools/
 │   ├── build_test.py        # 不递增版本号的构建/编译检查
-│   └── ci_validate.py       # CI 使用的 manifest/CHANGELOG/docs 校验
+│   ├── ci_validate.py       # CI 使用的 manifest/CHANGELOG/docs 校验
+│   ├── _doc_policy.py       # 家族共享的文档规则 (HYDRA-UMC-SDK 的副本,保持同步)
+│   ├── _readme_parity.py    # 检查八个 README 结构一致 (HYDRA-UMC-SDK 的副本,保持同步)
+│   └── hydra_project_tool.py # 每个仓库相同的命令: validate、test、ci、version、status、bump
 ├── Dockerfile               # 服务的容器镜像
 ├── build/                   # 构建输出（已被 gitignore）
 ├── pyproject.toml           # 包元数据、版本、依赖项（numpy）

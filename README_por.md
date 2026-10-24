@@ -118,7 +118,10 @@ HYDRA-UMC-ANOMALY-DETECTOR/
 │   └── hydra-umc-anomaly-detector.service # Unidade systemd da API local de deteção de anomalias do CM5
 ├── tools/
 │   ├── build_test.py        # Verificação de compilação sem subir a versão
-│   └── ci_validate.py       # Validação de manifesto/CHANGELOG/documentação usada pelo CI
+│   ├── ci_validate.py       # Validação de manifesto/CHANGELOG/documentação usada pelo CI
+│   ├── _doc_policy.py       # Regras de documentação partilhadas pela família (cópia da de HYDRA-UMC-SDK, mantida em sincronia)
+│   ├── _readme_parity.py    # Verificação de que os oito README partilham a mesma estrutura (cópia da de HYDRA-UMC-SDK, mantida em sincronia)
+│   └── hydra_project_tool.py # Os mesmos comandos em todos os repositórios: validate, test, ci, version, status, bump
 ├── Dockerfile               # Imagem de contentor do serviço
 ├── build/                   # Saída da compilação (ignorada pelo git)
 ├── pyproject.toml           # Metadados do pacote, versão, dependências (numpy)
