@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import socket
 import threading
+import time
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
@@ -117,6 +118,12 @@ class FakeBroker:
                 except (OSError, IndexError):
                     continue
 
+    def wait_for(self, count: int, seconds: float = 5.0) -> None:
+        """The broker records on its own thread: a publisher that has returned has sent, not necessarily been read."""
+        deadline = time.monotonic() + seconds
+        while len(self.messages) < count and time.monotonic() < deadline:
+            time.sleep(0.02)
+
     def close(self) -> None:
         self.listener.close()
 
@@ -216,6 +223,7 @@ def test_an_anomalous_window_is_flagged_written_and_announced_over_mqtt():
         config = _config(url, mqtt={"host": "127.0.0.1", "port": mqtt.port})
         follower = Follower(config, _registry_with_fitted_series(), DatalakeClient(url), sample_rate=RATE, publisher=MqttPublisher(config.mqtt), clock=lambda: 20.0)
         assert follower.tick() == 4
+        mqtt.wait_for(4)
         flags = [i["body"]["fields"]["value_anomalous"] for i in datalake.ingested]
         assert flags == [0.0, 0.0, 1.0, 0.0]
         topics = [(t, retain) for t, _, retain in mqtt.messages]
