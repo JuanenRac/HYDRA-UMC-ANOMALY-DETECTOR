@@ -4,6 +4,7 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **`--window welch`:** averages the power of overlapping Hann segments (half the window long, half overlapped), which makes the magnitudes of a healthy signal vary far less from one window to the next than a single periodogram does; the price is half the frequency resolution. A baseline remembers it like the other windows, a detector with another window refuses it, and the default stays `none`. Recalibrate `--threshold` with real healthy recordings before trusting it.
 - **README in the universal layout:** the README and its seven translations follow the layout that the four families share (22 sections in a fixed order), with an architecture picture and a repository-structure picture drawn from `docs/architecture.json` and `docs/structure.json`; the CI validator checks both pictures and the file tree. Where the repository has a service or an MQTT transport, the README now says how to start it and which environment variables it reads.
 
 - **The layout of the README is checked in the CI:** the validator runs `tools/universal_readme_check.py` and lists, as a warning, what differs from the universal layout of the README.

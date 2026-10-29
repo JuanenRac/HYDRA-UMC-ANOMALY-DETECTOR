@@ -42,7 +42,11 @@ class Spectrum:
 # a peak near A: the leakage of a speed that wanders a little is far smaller. The two give different numbers, so a
 # baseline remembers the window it was made with (baseline.py) and the threshold has to be recalibrated with real
 # healthy recordings before the Hann window is trusted.
-WINDOWS = ("none", "hann")
+# "welch" averages the power of overlapping Hann segments (half the window long, half overlapped), so the magnitudes of a
+# healthy signal vary far less from one window to the next than a single periodogram does; the price is half the
+# frequency resolution (fewer, wider bins). Like "hann", its numbers are not comparable with the others.
+WELCH_MIN_SAMPLES = 16
+WINDOWS = ("none", "hann", "welch")
 
 
 def compute_spectrum(signal: np.ndarray | list[float], sample_rate: float, window: str = "none") -> Spectrum:
@@ -77,6 +81,22 @@ def compute_spectrum(signal: np.ndarray | list[float], sample_rate: float, windo
     if window not in WINDOWS:
         raise ValueError(f"window must be one of {WINDOWS}, not {window!r}")
 
+    if window == "welch":
+        if len(signal) < WELCH_MIN_SAMPLES:
+            raise ValueError(f"window 'welch' needs at least {WELCH_MIN_SAMPLES} samples, got {len(signal)}")
+        segment = len(signal) // 2
+        step = max(segment // 2, 1)
+        taper = 0.5 - 0.5 * np.cos(2.0 * np.pi * np.arange(segment) / segment)
+        power = None
+        count_segments = 0
+        for start in range(0, len(signal) - segment + 1, step):
+            part = signal[start:start + segment]
+            spectrum = np.fft.rfft((part - part.mean()) * taper)
+            power = np.abs(spectrum) ** 2 if power is None else power + np.abs(spectrum) ** 2
+            count_segments += 1
+        magnitudes = np.sqrt(power / count_segments) * (2.0 / taper.sum())
+        freqs = np.fft.rfftfreq(segment, d=1.0 / sample_rate)
+        return Spectrum(freqs=freqs[1:], magnitudes=magnitudes[1:])
     if window == "hann":
         count = len(signal)
         # the periodic Hann window (the one for spectral analysis), not the symmetric one

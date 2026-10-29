@@ -118,7 +118,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--kind", default=None, help="DATALAKE kind to fetch training windows from (required with --datalake-url)")
     parser.add_argument("--field", default=None, help="DATALAKE field to fetch training windows from (required with --datalake-url)")
     parser.add_argument("--window-size", type=int, default=None, help="samples per training window (required with --datalake-url)")
-    parser.add_argument("--window", choices=WINDOWS, default="none", help="window applied before the FFT: none (the original behaviour) or hann (removes the mean and the leakage of a speed that wanders; recalibrate --threshold with real healthy recordings before trusting it). A baseline remembers the window it was made with.")
+    parser.add_argument("--window", choices=WINDOWS, default="none", help="window applied before the FFT: none (the original behaviour), hann (removes the mean and the leakage of a speed that wanders) or welch (Hann segments averaged in power: steadier magnitudes, half the frequency resolution); recalibrate --threshold with real healthy recordings before trusting hann or welch. A baseline remembers the window it was made with.")
     parser.add_argument("--train-start", type=int, default=None, help="first timestamp (unix ms) of the training history read from DATALAKE")
     parser.add_argument("--train-end", type=int, default=None, help="last timestamp (unix ms) of the training history read from DATALAKE")
     parser.add_argument("--max-train-points", type=int, default=200_000, help="most points read from DATALAKE for training (the read is paged, oldest first; reaching this is reported)")

@@ -71,3 +71,53 @@ def test_peak_frequency_on_empty_spectrum_raises() -> None:
     empty = Spectrum(freqs=np.array([]), magnitudes=np.array([]))
     with pytest.raises(ValueError):
         empty.peak_frequency()
+
+
+# ---- Welch averaging
+
+
+def test_welch_finds_the_peak_and_reports_its_amplitude() -> None:
+    signal = _sine(freq_hz=50.0, sample_rate=1000.0, n_samples=1000, amplitude=2.0)
+    spectrum = compute_spectrum(signal, 1000.0, "welch")
+    assert spectrum.peak_frequency() == pytest.approx(50.0, abs=2.5)  # 500-sample segments: 2 Hz bins
+    assert float(spectrum.magnitudes.max()) == pytest.approx(2.0, rel=0.15)
+    assert len(spectrum.magnitudes) == 500 // 2
+
+
+def test_welch_makes_the_noise_floor_steadier_than_one_hann_window() -> None:
+    rng = np.random.default_rng(7)
+    hann_spread, welch_spread = [], []
+    for _ in range(40):
+        noise = rng.normal(size=1000)
+        hann = compute_spectrum(noise, 1000.0, "hann").magnitudes
+        welch = compute_spectrum(noise, 1000.0, "welch").magnitudes
+        hann_spread.append(hann.std() / hann.mean())
+        welch_spread.append(welch.std() / welch.mean())
+    assert np.mean(welch_spread) < 0.7 * np.mean(hann_spread)
+
+
+def test_welch_needs_enough_samples() -> None:
+    with pytest.raises(ValueError, match="welch"):
+        compute_spectrum([0.0, 1.0] * 5, 100.0, "welch")
+
+
+def test_welch_baseline_round_trips_and_a_detector_with_another_window_refuses_it(tmp_path) -> None:
+    from hydra_umc_anomaly_detector.baseline import fit_baseline, load_baseline, save_baseline
+    from hydra_umc_anomaly_detector.detector import AnomalyDetector
+
+    rng = np.random.default_rng(3)
+    windows = [_sine(50.0, 1000.0, 1000) + 0.05 * rng.normal(size=1000) for _ in range(6)]
+    baseline = fit_baseline(windows, 1000.0, window="welch")
+    assert baseline.window == "welch"
+    path = tmp_path / "welch.npz"
+    save_baseline(path, baseline, 1)
+    loaded, _ = load_baseline(path)
+    assert loaded.window == "welch" and len(loaded.mean) == 250
+
+    detector = AnomalyDetector(sample_rate=1000.0, window="welch")
+    detector.fit(windows)
+    healthy = detector.score(_sine(50.0, 1000.0, 1000) + 0.05 * rng.normal(size=1000))
+    faulty = detector.score(_sine(50.0, 1000.0, 1000) + _sine(180.0, 1000.0, 1000, 0.5))
+    assert not healthy.anomalous and faulty.anomalous
+    with pytest.raises(Exception, match="welch"):
+        AnomalyDetector(sample_rate=1000.0, window="none").restore(baseline, 1)
