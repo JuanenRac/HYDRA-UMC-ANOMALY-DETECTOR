@@ -1,0 +1,118 @@
+{
+  "repo": "HYDRA-UMC-ANOMALY-DETECTOR",
+  "ecosystem": "hydra",
+  "tagline": "Classical statistics on the spectrum of a signal: a baseline per series, a z-score per bin, drift and alarms.",
+  "description": "HYDRA-UMC-ANOMALY-DETECTOR reads the telemetry of a series from HYDRA-UMC-DATALAKE, turns each window into a frequency spectrum with an FFT, compares every bin with the baseline of that series and raises an alarm when the z-score passes the threshold. It watches the drift of the baseline, writes its verdicts back to the data lake and publishes alarms over MQTT. It is a statistical detector, not a trained model.",
+  "columns": [
+    "WHO USES IT",
+    "THIS REPOSITORY",
+    "WHAT IT DEPENDS ON"
+  ],
+  "nodes": [
+    {
+      "id": "clients",
+      "column": 0,
+      "level": "external",
+      "title": "Dashboards, planner",
+      "lines": [
+        "read the verdicts over HTTP",
+        "or the MQTT alarms"
+      ],
+      "title_size": 12
+    },
+    {
+      "id": "api",
+      "column": 1,
+      "level": "contract",
+      "title": "api.py, follower.py",
+      "lines": [
+        "HTTP surface with a Bearer",
+        "token; continuous mode"
+      ],
+      "code": [
+        "src/hydra_umc_anomaly_detector/api.py::_WRITE_ROUTES",
+        "src/hydra_umc_anomaly_detector/follower.py"
+      ]
+    },
+    {
+      "id": "det",
+      "column": 1,
+      "level": "tested",
+      "title": "detector.py",
+      "lines": [
+        "z-score per FFT bin against",
+        "the baseline of each series"
+      ],
+      "code": [
+        "src/hydra_umc_anomaly_detector/detector.py::class AnomalyDetector",
+        "src/hydra_umc_anomaly_detector/baseline.py"
+      ]
+    },
+    {
+      "id": "fft",
+      "column": 1,
+      "level": "tested",
+      "title": "fft.py, drift.py",
+      "lines": [
+        "spectrum of each window; drift",
+        "of the baseline"
+      ],
+      "code": [
+        "src/hydra_umc_anomaly_detector/fft.py",
+        "src/hydra_umc_anomaly_detector/drift.py"
+      ]
+    },
+    {
+      "id": "lake",
+      "column": 2,
+      "level": "external",
+      "title": "HYDRA-UMC-DATALAKE",
+      "lines": [
+        "training and live windows;",
+        "verdicts written back"
+      ],
+      "title_size": 12
+    },
+    {
+      "id": "mqtt",
+      "column": 2,
+      "level": "untested",
+      "title": "MQTT broker",
+      "lines": [
+        "alarms at QoS 0; not run",
+        "against a real broker"
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "clients",
+      "to": "api",
+      "label": "HTTP",
+      "level": "tested"
+    },
+    {
+      "from": "api",
+      "to": "det",
+      "level": "tested"
+    },
+    {
+      "from": "det",
+      "to": "fft",
+      "level": "tested"
+    },
+    {
+      "from": "api",
+      "to": "lake",
+      "label": "series",
+      "level": "tested"
+    },
+    {
+      "from": "api",
+      "to": "mqtt",
+      "label": "alarm",
+      "level": "untested"
+    }
+  ],
+  "footer": "A classical statistical detector (FFT and z-score), not a trained model."
+}

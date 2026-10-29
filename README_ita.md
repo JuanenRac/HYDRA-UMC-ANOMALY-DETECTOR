@@ -1,26 +1,35 @@
+<!-- =============================================================================
+HYDRA-UMC-ANOMALY-DETECTOR - Statistical anomaly detector
+Copyright (C) JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
+GPL-3.0-or-later - see LICENSE
+============================================================================= -->
+
 <p align="center">
   <img src="images/HYDRA_UMC_BANNER.svg" alt="HYDRA-UMC-ANOMALY-DETECTOR banner" width="100%">
 </p>
 
-# 🔍 HYDRA-UMC-ANOMALY-DETECTOR
+# 📈 HYDRA-UMC-ANOMALY-DETECTOR
 
 <p align="center"><a href="README.md">🇺🇸 English</a> | <a href="README_spa.md">🇪🇸 Español</a> | <a href="README_fra.md">🇫🇷 Français</a> | 🇮🇹 <b>Italiano</b> | <a href="README_deu.md">🇩🇪 Deutsch</a> | <a href="README_zho.md">🇨🇳 简体中文</a> | <a href="README_jpn.md">🇯🇵 日本語</a> | <a href="README_por.md">🇵🇹 Português</a></p>
 
 ### 🧠 Rilevamento statistico di anomalie e analisi delle vibrazioni del motore (nessun modello di machine learning)
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Licenza-GPL%203.0--or--later-blue.svg" alt="GPL 3.0 or later">
+  <img src="https://img.shields.io/badge/License-GPL%203.0--or--later-blue.svg" alt="GPL 3.0 or later">
   <img src="https://img.shields.io/badge/Tech-Python%20%2F%20NumPy-blueviolet.svg" alt="Tech">
-  <img src="https://img.shields.io/badge/Metodo-FFT%20%2F%20Spectrogram-orange.svg" alt="Method">
+  <img src="https://img.shields.io/badge/Method-FFT%20%2F%20Spectrogram-orange.svg" alt="Method">
+  <img src="https://img.shields.io/badge/Tests-154%20passing-2ea44f.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Version-0.1.8-0f6cbd.svg" alt="Version">
+  <img src="https://img.shields.io/badge/Maturity-functional-0F6CBD.svg" alt="Maturity">
 </p>
 
 ---
 
 > **Verifica di onestà - cosa funziona davvero oggi:** lo spettro FFT (`fft.py`), la baseline statistica per bin (`baseline.py`), il rilevatore di anomalie a max-z-score (`detector.py`), le metriche precisione/recall/F1 su una fixture etichettata (`metrics.py`), il rilevamento della deriva a media mobile (`drift.py`), il vero client HTTP di HYDRA-UMC-DATALAKE (`datalake_client.py`), e la semplice API JSON/HTTP (`api.py`) sono reali e testati (87 test superati: `pytest tests/` - `test_fft.py`, `test_baseline.py`, `test_detector.py`, `test_metrics.py`, `test_drift.py`, `test_datalake_client.py`, `test_api.py`). "AI-driven" e "Learning Models" qui sotto descrivono vera elaborazione del segnale più una baseline statistica adattata da finestre note come sane - non una rete neurale addestrata, e non un apprendimento continuo in background: una baseline viene adattata una sola volta, all'avvio a partire dalla vera cronologia DATALAKE oppure tramite una chiamata esplicita a `POST /baseline/fit`, e resta esattamente quella versione di modello fino al prossimo riadattamento esplicito (vedi il versionamento del modello proprio di `detector.py`). Le Fasi 3 e 4 della ROADMAP qui sotto (apprendimento non supervisionato, analisi acustica) sono completamente aspirazionali - non esiste ancora codice per nessuna delle due in questo repository. Vedi `CHANGELOG.md` per cosa è stato esattamente consegnato finora.
 
----
-
 > **Stato di sicurezza (safety e security):** questo ecosistema non è un sistema di sicurezza certificato. Non esiste ancora un percorso E-STOP hardware, né limiti o interblocchi imposti dal firmware, né un comando di movimento verificato; le immagini firmware sono controllate con CRC32 e un HMAC-SHA256 a chiave condivisa, non con una firma asimmetrica; TLS e TLS reciproco sono opzionali e disattivati per impostazione predefinita; nessuna scheda propria è stata ancora assemblata o provata. Leggi la [base di sicurezza](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/SECURITY_BASELINE.md) e il [modello delle minacce](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/THREAT_MODEL.md) prima di fidarti di qualsiasi affermazione qui per la sicurezza di una persona.
+
+---
 
 ## 📋 In breve
 
@@ -28,10 +37,12 @@
 |---|---|
 | Versione | `0.1.8` |
 | Maturità | Funzionale |
-| Test | 73 (`pytest tests/`) |
+| Test | 154 (`python -m pytest -q tests`) |
 | Tecnologia | Python / FFT / statistical baseline detection |
 | Destinazione | Il Raspberry Pi CM5 di una cella HYDRA-UMC |
 | Su hardware reale | Non ancora: per questa versione non risulta alcuna esecuzione su hardware reale |
+
+**Vai a:** [Panoramica](#-panoramica) · [Architettura](#-architettura) · [Funzionalità](#-funzionalità) · [Sicurezza e protezione](#-sicurezza-e-protezione) · [Interfacce](#-interfacce) · [Configurazione](#-configurazione) · [Avvio rapido](#-avvio-rapido) · [Test](#-test) · [Risoluzione dei problemi](#-risoluzione-dei-problemi) · [Struttura del repository](#-struttura-del-repository) · [Progetti correlati](#-progetti-correlati)
 
 ## 🚦 Stato del progetto
 
@@ -42,31 +53,28 @@ Ogni riga è una parte di questo repository e il semaforo dice a che punto è og
 | Area | Stato | Cosa significa qui |
 |---|---|---|
 | Software | 🟡 | Funziona per il suo scopo principale; la verifica di onestà qui sopra elenca ciò che manca ancora |
-| Test | 🟢 | 73 test automatici, eseguiti a ogni modifica |
+| Test | 🟢 | 154 test automatici, eseguiti a ogni modifica |
 | Hardware reale | 🔴 | Non ancora: per questa versione non risulta alcuna esecuzione su hardware reale |
 | Documentazione | 🟢 | README in otto lingue, verificato rispetto al manifesto a ogni modifica |
 
-## 1. 🛠️ PANORAMICA TECNICA
+## 🎯 Panoramica
 
 **HYDRA-UMC-ANOMALY-DETECTOR** è pensato per diventare il guardiano proattivo della salute robotica. Applica una FFT e una linea di base statistica (nessun modello di machine learning) a campioni di telemetria (vibrazioni, firme di corrente del motore e profili termici) e segnala gli scostamenti da una linea di base sana; non prevede ancora i guasti.
 
 L'obiettivo è monitorare l'«impronta digitale» di ogni motore e testina dello strumento per poter individuare l'usura dei cuscinetti, le cinghie allentate o i guasti al raffreddamento con settimane di anticipo, consentendo una manutenzione programmata invece di riparazioni di emergenza (previsto: non esiste ancora codice di previsione dei guasti).
 
-### Caratteristiche principali:
-* **Un rilevatore per serie (`/detectors/{sourceId}/{kind}/{field}/...`).** Un motore e un mandrino non vibrano allo stesso modo, e un'unica linea di base condivisa chiamava anomalo l'altro. `POST /detectors/{sourceId}/{kind}/{field}/fit` adatta la linea di base di quella serie (la terna con cui DATALAKE la conserva), `.../detect` valuta una finestra contro di essa, `.../drift/init` e `.../drift/observe` le danno un proprio monitor di deriva, e `GET /detectors` elenca le serie e se ciascuna è adattata. Una serie nasce con il suo primo adattamento riuscito e ce ne sono al massimo `--max-series` (64); valutare una serie mai adattata dà `409`, mai un verdetto di un'altra linea di base; adattare una serie non tocca mai un'altra né quella condivisa. Scrivere richiede il token come la linea di base condivisa, valutare anche quando c'è un token (`--no-protect-reads` lo lascia aperto). `--baseline-dir` salva una linea di base per serie e le ripristina all'avvio. Le rotte originali non cambiano. *(implementato, testato in `tests/test_series.py`)*
-* **Le letture sono protette per impostazione predefinita (`--protect-reads`).** Con un token impostato, anche `POST /detect` richiede `Authorization: Bearer <token>`; solo `GET /stats`, il percorso di salute, resta aperto. È il comportamento predefinito quando c'è un token (`--no-protect-reads` o `HYDRA_UMC_ANOMALY_PROTECT_READS=0` lasciano le letture aperte; `HYDRA_UMC_ANOMALY_PROTECT_READS=1` rifiuta di avviarsi senza token). Senza token (solo loopback) non c'è nulla da richiedere. Chi legge tramite HYDRA-UMC-SERVER invia già il token.
-* 🔍 **Analisi della firma:** FFT (Fast Fourier Transform) di campioni della corrente del motore per rilevare squilibri meccanici. *(implementato)*
-* 📉 **Manutenzione predittiva:** Stima RUL (Remaining Useful Life) per motori NEMA e strumenti URTC - aspirazionale, non esiste ancora codice per questo in questo repository.
-* 🚨 **Sistema di allerta precoce:** Mostrare avvisi direttamente nelle interfacce Studio e Watch - aspirazionale; oggi il rilevatore espone i propri verdetti tramite la propria API HTTP e, in modalità continua, come campioni `anomaly_score` in DATALAKE e come messaggi MQTT. DASHBOARD-AI lo legge tramite HYDRA-UMC-SERVER (stessa origine, quindi il CORS non serve); le interfacce Studio e Watch non mostrano ancora i suoi allarmi.
-* **Modalità servizio continuo (`--follow-config FILE`).** Legge ogni serie configurata da DATALAKE mentre cresce, la taglia dove il campionamento è irregolare, valuta ogni finestra completa con il rilevatore di quella serie, riscrive il verdetto come campione di tipo `anomaly_score` e, con `mqtt` configurato, pubblica un messaggio di stato trattenuto quando una serie cambia stato e un allarme per ogni finestra anomala. Tutto ciò che si regola (serie, dimensione della finestra, intervallo, topic, broker) sta nel file JSON; un DATALAKE o un broker fermo viene contato in `GET /stats` e non ferma mai il ciclo. *(implementato; provato contro un finto DATALAKE HTTP reale e un finto broker TCP reale, mai eseguito contro i servizi veri)*
-* 🧬 **Apprendimento della baseline:** Adatta la propria baseline statistica dalla cronologia reale nota come sana del Datalake - non è apprendimento continuo in background, ma un riadattamento reale ed esplicito ogni volta che viene richiesto. *(implementato)*
-* 🏷️ **Versionamento del modello:** Ogni `Verdict` porta con sé la versione reale e monotona del modello e la soglia rispetto a cui è stato valutato - un riadattamento (refit) è un evento reale e tracciabile. Indica inoltre con quante finestre sane è stata calibrata la baseline, così un allarme è spiegabile e riproducibile. *(implementato)*
-* 📐 **Metriche di precisione/recall:** Precision/recall/F1 reali, calcolati su un fixture etichettato (`metrics.py`), non solo affermazioni in prosa sulla separazione dei punteggi. *(implementato)*
-* 📈 **Rilevamento di deriva simulata:** `DriftMonitor` segnala un innalzamento sostenuto reale della media mobile, distinto dal flag di anomalia proprio di una singola finestra. *(implementato)*
+## 🧩 Ruolo in HYDRA-UMC
 
----
+**HYDRA-UMC-ANOMALY-DETECTOR** legge la telemetria che conserva HYDRA-UMC-DATALAKE, trova le serie che non si comportano più come prima (un cuscinetto che inizia a cantare, un azionamento che deriva) e lo dice via HTTP, nel data lake e come allarmi MQTT. Osserva; non comanda mai una macchina.
 
-## 2. 🔄 PIPELINE DI RILEVAMENTO
+## 🏛️ Architettura
+
+<p align="center">
+  <img src="images/architecture.svg" alt="HYDRA-UMC-ANOMALY-DETECTOR architecture" width="100%">
+</p>
+
+<details>
+<summary>Versione testuale del diagramma (Mermaid)</summary>
 
 ```mermaid
 flowchart TB
@@ -78,9 +86,9 @@ flowchart TB
     ALRT --> REP["Flag report di produzione"]
 ```
 
----
+</details>
 
-## 3. 🧱 ARCHITETTURA E DECISIONI DI PROGETTAZIONE
+**Perché è fatto così**
 
 * **Perché è fratello, non un sottomodulo, di HYDRA-UMC-DATALAKE.** Il rilevamento anomalie è un carico di lavoro analitico di sola lettura su telemetria già memorizzata - tenerlo separato significa che un crash del rilevatore o un'inferenza di modello lenta non bloccano mai le scritture proprie di HYDRA-UMC-TELEMETRY-COLLECTOR nello stesso archivio.
 * **Perché FFT + una base statistica oggi, non ancora una rete neurale addestrata.** Il README lo chiama "guidato dall'IA" - ciò che è reale e funzionante in questa prima passata è una vera tecnica di elaborazione del segnale (`src/hydra_umc_anomaly_detector/fft.py`, la FFT propria di numpy) più una base statistica per bin di frequenza appresa da finestre note come sane (`baseline.py`) e un verdetto di max-z-score (`detector.py`) - non un modello di deep learning addestrato. Funziona, è testato contro vere firme di guasto sintetiche, ed è la base corretta su cui costruire un modello appreso più avanti (vedi la sezione TABELLA DI MARCIA più sotto) - ma chiamarlo rete neurale qui esagererebbe ciò che realmente gira.
@@ -89,57 +97,77 @@ flowchart TB
 * **Perché `DriftMonitor` è un meccanismo separato da `AnomalyDetector.score()`, e non una soglia più grande.** Rispondono a domande reali diverse: "questa finestra è anomala" (un verdetto puntuale) contro "la media RECENTE si è spostata silenziosamente" (una tendenza mobile, robusta rispetto a una singola finestra anomala rumorosa). Un vero test di deriva simulata ha scoperto e documenta onestamente che, per il design max-z-score di questo rilevatore, il flag proprio di una singola finestra scatta in realtà *prima* del segnale di deriva mobile per un guasto di un nuovo tipo di frequenza - il vero valore di `DriftMonitor` qui è una conferma di tendenza sostenuta, non un allarme più precoce, e il codice lo dichiara così invece di sopravvenderlo.
 * **Perché `metrics.py` calcola precision/recall invece di lasciare la qualità della soglia come prosa.** Il docstring proprio di `detector.py` prima affermava solo "sano valutato fino a ~5.3, difettoso valutato nelle centinaia" - reale, ma non un numero contro cui un futuro ritaratura potesse fare un test di regressione. `precision_recall()` sullo stesso fixture reale dà a questo un valore reale e verificabile (1.0/1.0 oggi).
 
----
+## ✨ Funzionalità
 
-## 📂 STRUTTURA DELLE CARTELLE
+* **Un rilevatore per serie (`/detectors/{sourceId}/{kind}/{field}/...`).** Un motore e un mandrino non vibrano allo stesso modo, e un'unica linea di base condivisa chiamava anomalo l'altro. `POST /detectors/{sourceId}/{kind}/{field}/fit` adatta la linea di base di quella serie (la terna con cui DATALAKE la conserva), `.../detect` valuta una finestra contro di essa, `.../drift/init` e `.../drift/observe` le danno un proprio monitor di deriva, e `GET /detectors` elenca le serie e se ciascuna è adattata. Una serie nasce con il suo primo adattamento riuscito e ce ne sono al massimo `--max-series` (64); valutare una serie mai adattata dà `409`, mai un verdetto di un'altra linea di base; adattare una serie non tocca mai un'altra né quella condivisa. Scrivere richiede il token come la linea di base condivisa, valutare anche quando c'è un token (`--no-protect-reads` lo lascia aperto). `--baseline-dir` salva una linea di base per serie e le ripristina all'avvio. Le rotte originali non cambiano. *(implementato, testato in `tests/test_series.py`)*
+* **Le letture sono protette per impostazione predefinita (`--protect-reads`).** Con un token impostato, anche `POST /detect` richiede `Authorization: Bearer <token>`; solo `GET /stats`, il percorso di salute, resta aperto. È il comportamento predefinito quando c'è un token (`--no-protect-reads` o `HYDRA_UMC_ANOMALY_PROTECT_READS=0` lasciano le letture aperte; `HYDRA_UMC_ANOMALY_PROTECT_READS=1` rifiuta di avviarsi senza token). Senza token (solo loopback) non c'è nulla da richiedere. Chi legge tramite HYDRA-UMC-SERVER invia già il token.
+* 🔍 **Analisi della firma:** FFT (Fast Fourier Transform) di campioni della corrente del motore per rilevare squilibri meccanici. *(implementato)*
+* 📉 **Manutenzione predittiva:** Stima RUL (Remaining Useful Life) per motori NEMA e strumenti URTC - aspirazionale, non esiste ancora codice per questo in questo repository.
+* 🚨 **Sistema di allerta precoce:** Mostrare avvisi direttamente nelle interfacce Studio e Watch - aspirazionale; oggi il rilevatore espone i propri verdetti tramite la propria API HTTP e, in modalità continua, come campioni `anomaly_score` in DATALAKE e come messaggi MQTT. DASHBOARD-AI lo legge tramite HYDRA-UMC-SERVER (stessa origine, quindi il CORS non serve); le interfacce Studio e Watch non mostrano ancora i suoi allarmi.
+* **Modalità servizio continuo (`--follow-config FILE`).** Legge ogni serie configurata da DATALAKE mentre cresce, la taglia dove il campionamento è irregolare, valuta ogni finestra completa con il rilevatore di quella serie, riscrive il verdetto come campione di tipo `anomaly_score` e, con `mqtt` configurato, pubblica un messaggio di stato trattenuto quando una serie cambia stato e un allarme per ogni finestra anomala. Tutto ciò che si regola (serie, dimensione della finestra, intervallo, topic, broker) sta nel file JSON; un DATALAKE o un broker fermo viene contato in `GET /stats` e non ferma mai il ciclo. *(implementato; provato contro un finto DATALAKE HTTP reale e un finto broker TCP reale, mai eseguito contro i servizi veri)*
+* 🧬 **Apprendimento della baseline:** Adatta la propria baseline statistica dalla cronologia reale nota come sana del Datalake - non è apprendimento continuo in background, ma un riadattamento reale ed esplicito ogni volta che viene richiesto. *(implementato)*
+* 🏷️ **Versionamento del modello:** Ogni `Verdict` porta con sé la versione reale e monotona del modello e la soglia rispetto a cui è stato valutato - un riadattamento (refit) è un evento reale e tracciabile. Indica inoltre con quante finestre sane è stata calibrata la baseline, così un allarme è spiegabile e riproducibile. *(implementato)*
+* 📐 **Metriche di precisione/recall:** Precision/recall/F1 reali, calcolati su un fixture etichettato (`metrics.py`), non solo affermazioni in prosa sulla separazione dei punteggi. *(implementato)*
+* 📈 **Rilevamento di deriva simulata:** `DriftMonitor` segnala un innalzamento sostenuto reale della media mobile, distinto dal flag di anomalia proprio di una singola finestra. *(implementato)*
 
-Servizio puramente software (ML/analisi) senza hardware, firmware o OS propri; queste cartelle sono omesse dalla politica di struttura del repository.
+## 🔒 Sicurezza e protezione
 
-```text
-HYDRA-UMC-ANOMALY-DETECTOR/
-├── src/hydra_umc_anomaly_detector/  # Codice sorgente
-│   ├── __init__.py                  # Versione del pacchetto
-│   ├── fft.py                       # Spettro reale basato su FFT (numpy)
-│   ├── baseline.py                  # Profilo statistico sano per bin (media/std)
-│   ├── detector.py                  # Adatta un Baseline, valuta finestre dal vivo contro di esso
-│   ├── metrics.py                   # Precision/recall/F1 reali su un fixture etichettato
-│   ├── drift.py                     # Rilevamento reale di deriva tramite media mobile
-│   ├── datalake_client.py            # Recupera i punti ordinati per timestamp da HYDRA-UMC-DATALAKE e li suddivide in finestre di lunghezza fissa
-│   ├── registry.py                   # Un rilevatore per (sourceId, kind, field): limitato, salvato per impronta della chiave
-│   ├── follower.py                   # Servizio continuo: legge le serie da DATALAKE, valuta, riscrive i verdetti, genera allarmi
-│   ├── mqtt_publish.py               # Publisher MQTT 3.1.1 minimale (QoS 0) per gli allarmi
-│   ├── api.py                        # Handler JSON/HTTP semplici che avvolgono il detector
-│   └── main.py                       # Punto di ingresso: collega tutto, avvia il server HTTP
-├── tests/                   # pytest - correttezza FFT, statistiche del baseline, rilevamento reale di guasti, metriche, deriva simulata
-├── docs/
-│   └── API.md               # Riferimento reale degli endpoint HTTP (richieste, risposte, codici di stato)
-├── images/                  # Media e diagrammi
-├── systemd/
-│   └── hydra-umc-anomaly-detector.service # Unità systemd della API di rilevamento anomalie sulla CM5 locale
-├── tools/
-│   ├── build_test.py        # Controllo build/compilazione senza incremento di versione
-│   ├── ci_validate.py       # Validazione manifest/CHANGELOG/docs usata dalla CI
-│   ├── _doc_policy.py       # Regole di documentazione condivise dalla famiglia (copia di quella di HYDRA-UMC-SDK, mantenuta sincronizzata)
-│   ├── _readme_parity.py    # Verifica che gli otto README abbiano la stessa struttura (copia di quella di HYDRA-UMC-SDK, mantenuta sincronizzata)
-│   └── hydra_project_tool.py # Gli stessi comandi in ogni repository: validate, test, ci, version, status, bump
-├── Dockerfile               # Immagine container del servizio
-├── build/                   # Output di build (ignorato da git)
-├── pyproject.toml           # Metadati del pacchetto, versione, dipendenze (numpy)
-├── bump_version.py          # Incremento di versione stile contachilometri (eseguito solo dal comando `bump` esplicito)
-├── bump_manifest_version.py # Sincronizza la versione di hydra-umc.project.json con quella nativa (--sync)
-├── build.sh / build.bat     # Build reale: venv + installazione editable + test
-├── run.sh / run.bat         # Esecuzione reale: avvia l'API HTTP
-└── README.md
+| Minaccia | Difesa | Dove |
+|---|---|---|
+| Chiunque riscriva una baseline o lo stato di deriva | Un token Bearer, confrontato in tempo costante, protegge `/baseline/fit`, `/drift/init`, `/drift/observe` e le rotte di scrittura di `/detectors/...`; senza token configurato l'API è aperta (il predefinito in loopback) | `api.py` |
+| Valutare con dati altrui e un corpo enorme | `POST /detect` chiede il token quando ce n'è uno configurato (`--no-protect-reads` o `HYDRA_UMC_ANOMALY_PROTECT_READS=0` lo apre); resta aperto solo `GET /stats`; un corpo è al massimo 1 MiB | `api.py` |
+| Molte serie che esauriscono la memoria | Un rilevatore per serie, al massimo 64 (`--max-series`), con identificatori conformi a `^[A-Za-z0-9][A-Za-z0-9._:-]{0,95}$`; l'addestramento legge al massimo 200 000 punti (`--max-train-points`); l'API ascolta su `127.0.0.1` per impostazione predefinita | `registry.py`, `main.py` |
+
+**Cosa non fa mai:** è un rilevatore statistico classico (uno z-score per bin FFT, soglia 10 per impostazione predefinita), non un modello di IA addestrato, e non comanda mai una macchina.
+
+## 🔌 Interfacce
+
+HTTP su `127.0.0.1:8097` per impostazione predefinita; il riferimento completo è `docs/API.md`.
+
+| Topic o rotta | Cosa porta |
+|---|---|
+| `POST /baseline/fit`, `POST /detect` | imparare la baseline del segnale e poi valutare una finestra rispetto a essa |
+| `POST /drift/init`, `POST /drift/observe` | avviare e alimentare il monitoraggio della deriva |
+| `POST /detectors/{sourceId}/{kind}/{field}/...` | le stesse operazioni per una serie del data lake |
+| `GET /stats`, `GET /detectors` | stato e elenco dei rilevatori |
+| `--follow-config FILE.json` | modo continuo: legge ogni serie configurata man mano che cresce (ogni 5 s, al massimo 20 finestre per ciclo), riscrive il verdetto e invia allarmi MQTT sotto `hydra/anomaly` |
+
+## ⚙️ Configurazione
+
+| Variabile | Predefinito | Cosa imposta |
+|---|---|---|
+| `--addr`, `--port` | `127.0.0.1`, `8097` | dove ascolta l'API HTTP |
+| `--sample-rate`, `--threshold` | `1000.0`, `10.0` | frequenza di campionamento in Hz; il massimo z-score che un bin può avere |
+| `--window`, `--window-size` | `none` | `none` o `hann` prima della FFT; campioni per finestra (necessario con `--datalake-url`) |
+| `--datalake-url`, `--source-id`, `--kind`, `--field`, `--train-start`, `--train-end` | non impostato | calcolare una baseline nuova all'avvio dal data lake (i primi quattro vanno insieme) |
+| `--max-train-points`, `--max-series` | `200000`, `64` | massimo di punti letti per l'addestramento; massimo di rilevatori |
+| `--token-file`, `HYDRA_UMC_ANOMALY_TOKEN` | nessun token | il token Bearer dell'API |
+| `HYDRA_UMC_ANOMALY_PROTECT_READS` | protetto se c'è un token | `0` apre `POST /detect`, `1` lo protegge |
+| `HYDRA_UMC_DATALAKE_INGEST_TOKEN`, `HYDRA_UMC_DATALAKE_TOKEN`, `HYDRA_UMC_DATALAKE_READ_TOKEN` | non impostato | i token con cui il rilevatore parla con il data lake (o `ingestTokenFile` nella configurazione di follow) |
+
+## 🚀 Avvio rapido
+
+Richiede Python 3.10 o successivo e NumPy 1.24 o successivo (`pip install -e .` lo installa).
+
+```bash
+bash run.sh        # Linux, macOS (run.bat on Windows)
+python -m hydra_umc_anomaly_detector.main --datalake-url http://127.0.0.1:8095 --source-id press1 --kind vibration --field accel --window-size 1024
+curl http://127.0.0.1:8097/stats
 ```
 
-Rimossi dal template originale: `hardware/`, `firmware/` e `os/` — è un
-servizio puramente software (pacchetto Python) senza hardware o firmware
-propri e senza un'immagine del sistema operativo da mantenere. Vedi
-[`docs/API.md`](docs/API.md) per il riferimento completo degli endpoint HTTP.
+## 🧪 Test
 
----
+154 test automatici si eseguono con `python -m pytest -q tests`. Usano segnali realistici, controlli dei falsi positivi e un data lake finto; né hardware né rete esterna.
 
-## 4. ⚙️ BUILD ED ESECUZIONE
+| File di test | Test | Cosa copre |
+|---|---|---|
+| `test_fft.py`, `test_baseline.py`, `test_detector.py`, `test_drift.py`, `test_metrics.py` | - | lo spettro, la baseline, lo z-score, la deriva e precisione/richiamo |
+| `test_realistic_false_positives.py`, `realistic_signals.py`, `signal_fixtures.py` | - | segnali realistici che non devono far scattare un allarme |
+| `test_api.py`, `test_series.py`, `test_follower.py`, `test_datalake_client.py`, `test_window_token_fetch.py` | - | l'interfaccia HTTP, un rilevatore per serie, il modo continuo e il client del data lake contro un data lake finto |
+
+La CI esegue `HYDRA_UMC_CI=1 python tools/ci_validate.py`, che controlla il manifesto, i documenti, gli otto README e le immagini.
+
+## 🏗️ Compilazione e rilascio
 
 Richiede Python >= 3.10. Rilevamento reale di anomalie basato su FFT con
 API HTTP, non solo uno scheletro che si importa.
@@ -202,17 +230,70 @@ python -m pytest tests/ -v   # fft.py (il picco di un'onda sinusoidale
                               # vero ThreadingHTTPServer)
 ```
 
----
+## 🩺 Risoluzione dei problemi
 
-## 🚀 TABELLA DI MARCIA
+| Vedi | Perché | Fai |
+|---|---|---|
+| `401` | L'API ha un token e la richiesta non ne ha uno, o ne ha uno sbagliato | Invia `Authorization: Bearer <token>` |
+| `--window-size` is required | `--datalake-url` è stato dato senza dimensione finestra, sorgente, tipo e campo | Dai `--source-id`, `--kind`, `--field` e `--window-size` insieme |
+| false alarms on a healthy machine | La baseline è stata calcolata con pochi dati o dati non rappresentativi, o la soglia è troppo bassa | Addestra su un periodo normale più lungo (`--train-start`, `--train-end`), usa `--window hann` e alza `--threshold` |
+
+## 📂 Struttura del repository
+
+<p align="center">
+  <img src="images/repository-structure.svg" alt="Repository structure of HYDRA-UMC-ANOMALY-DETECTOR" width="100%">
+</p>
+
+<details>
+<summary>Versione testuale dell'albero</summary>
+
+```text
+HYDRA-UMC-ANOMALY-DETECTOR/
+├── src/hydra_umc_anomaly_detector/
+│   ├── fft.py                                   estrazione di caratteristiche FFT, finestre
+│   ├── baseline.py                              profilo statistico per bin
+│   ├── detector.py                              rilevatore z-score, soglia
+│   ├── drift.py                                 monitoraggio della deriva
+│   ├── registry.py                              un rilevatore per serie
+│   ├── follower.py                              modo continuo su DATALAKE
+│   ├── api.py main.py                           interfaccia HTTP e ingresso
+│   ├── datalake_client.py                       client HTTP di DATALAKE
+│   ├── mqtt_publish.py                          publisher minimo di allarmi MQTT
+│   └── metrics.py                               precisione, richiamo e F1
+├── tests/                                       154 test, con segnali realistici
+├── docs/                                        il riferimento dell'API
+├── systemd/                                     unità di servizio per la CM5
+├── tools/                                       esecutore di build e test, aumento di versione, validatore CI, generatori e controlli di README e immagini
+├── images/                                      banner e immagini del README
+├── .github/                                     workflow CI e modelli di segnalazione
+├── pyproject.toml                               metadati del pacchetto e dipendenze
+├── hydra-umc.project.json                       manifesto: versione, maturità, famiglia
+├── CHANGELOG.md                                 cosa è cambiato in ogni versione
+├── build.sh build.bat                           script di build (non cambiano mai la versione)
+├── build-test.sh build-test.bat                 script di build (non cambiano mai la versione)
+├── test.sh test.bat                             eseguono i test
+├── bump_version.py / bump_manifest_version.py   aumento di versione esplicito
+├── Dockerfile                                   immagine di container
+├── run.sh run.bat                               avviare il servizio
+└── SECURITY.md SUPPORT.md CONTRIBUTING.md CODE_OF_CONDUCT.md LICENSE LICENSE.md
+```
+
+</details>
+
+## 🗺️ Roadmap e limiti noti
+
+**Limiti noti oggi**
+
 * **Fase 1:** Ingestione ad alto throughput del Datalake e indicizzazione per l'analisi storica.
 * **Fase 2:** Compressione edge del collettore di telemetria e protocolli di trasmissione sicuri.
 * **Fase 3:** Rilevamento delle anomalie tramite apprendimento non supervisionato e analisi delle vibrazioni del motore.
 * **Fase 4:** Integrazione dell'analisi acustica per «sentire» tempestivamente i problemi meccanici e approfondimenti predittivi dell'IA.
 
----
+## 🌍 Lingue
 
-## 🔗 Progetti Correlati
+Questo README e i documenti del repository esistono in otto lingue: inglese, spagnolo, tedesco, francese, italiano, giapponese, cinese e portoghese (Portogallo). Sono scritti insieme e la CI verifica che gli otto file abbiano le stesse sezioni e gli stessi link. Questo repository non ha uno schermo né un catalogo di messaggi propri, quindi non ci sono stringhe di interfaccia da tradurre.
+
+## 🔗 Progetti correlati
 
 Questo progetto fa parte dell'ecosistema robotico HYDRA-UMC dello stesso autore (JuanenRac / Electro Hobby 3D). Vale la pena conoscerlo, poiché una richiesta potrebbe in realtà riguardare uno di questi invece di questo repository.
 
@@ -303,21 +384,27 @@ Questo progetto fa parte dell'ecosistema robotico HYDRA-UMC dello stesso autore 
 - **[HYDRA-UMC-OPS-AGENT](https://github.com/JuanenRac/HYDRA-UMC-OPS-AGENT)** — coordinatore di incidenti di manutenzione: un ruolo edge a basso privilegio raccoglie uno snapshot di inventario/salute sanificato, un ruolo control-plane lo rende in sola lettura e chiede a un provider di IA di suggerire una diagnosi - non applica mai una patch né distribuisce nulla.
 - **[HYDRA-UMC-DEV-SERVER](https://github.com/JuanenRac/HYDRA-UMC-DEV-SERVER)** — host di sviluppo riproducibile (Raspberry Pi 5 / CM5) che conserva il codice sorgente dell'ecosistema ed esegue attività delimitate di build/test tramite una coda durevole; un ruolo di sviluppo dedicato, esplicitamente distinto da un CM5 operativo.
 
+## 📚 Documentazione
 
----
+Dove leggere di più:
 
-## 📚 Documentazione e Comunità
+* [docs/API.md](docs/API.md) - ogni rotta, la sua regola di token e i suoi errori
+* [Base di sicurezza dell'ecosistema](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/SECURITY_BASELINE.md)
+* [Modello delle minacce dell'ecosistema](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/THREAT_MODEL.md)
+* [Registro delle modifiche di questo repository](CHANGELOG.md)
+* [Licenza di questo repository](LICENSE.md)
 
-- **[CONTRIBUTING.md](CONTRIBUTING.md)** — stack tecnologico e linee guida di codifica per una pull request.
-- **[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)** — gli standard di comportamento attesi in questa comunità.
-- **[SECURITY.md](SECURITY.md)** — come segnalare una vulnerabilità, e le reali aree di attenzione sulla sicurezza di questo progetto.
-- **[SUPPORT.md](SUPPORT.md)** — dove porre domande e segnalare bug.
-- **[LICENSE.md](LICENSE.md)** — la licenza propria di questo progetto.
+## 🤝 Contribuire e comunità
+
+* Prima di una pull request esegui `HYDRA_UMC_CI=1 py -3 tools/ci_validate.py` (oppure `HYDRA_UMC_CI=1 python3 tools/ci_validate.py`): deve stampare `CI_VALIDATION=PASS`. Non eseguire `build.sh` né `build.bat` per questa verifica; compilare non è verificare.
+* I otto README sono scritti da un'unica fonte in HYDRA-UMC-DOCS; non modificarli a mano. Cambia la fonte e riscrivili con `tools/make_readmes.py`.
+* Non affermare in un README ciò che non è stato eseguito: scrivi «simulato» o «non provato su hardware» quando è la verità.
+* Vedi [CONTRIBUTING.md](CONTRIBUTING.md), il [codice di condotta](CODE_OF_CONDUCT.md), [SECURITY.md](SECURITY.md) e [SUPPORT.md](SUPPORT.md).
 
 ## 👤 AUTORE
-**JuanenRac** (Electro Hobby 3D)
-📧 electrohobby3d@gmail.com
-📺 [youtube.com/@electrohobby3d](https://youtube.com/@electrohobby3d)
+
+**JuanenRac (Electro Hobby 3D)** · electrohobby3d@gmail.com
 
 ## 📜 LICENZA
-GPL-3.0-or-later - Vedere LICENSE per i dettagli.
+
+GPL-3.0-or-later - [LICENSE](LICENSE).

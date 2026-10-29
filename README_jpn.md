@@ -1,26 +1,35 @@
+<!-- =============================================================================
+HYDRA-UMC-ANOMALY-DETECTOR - Statistical anomaly detector
+Copyright (C) JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
+GPL-3.0-or-later - see LICENSE
+============================================================================= -->
+
 <p align="center">
   <img src="images/HYDRA_UMC_BANNER.svg" alt="HYDRA-UMC-ANOMALY-DETECTOR banner" width="100%">
 </p>
 
-# 🔍 HYDRA-UMC-ANOMALY-DETECTOR
+# 📈 HYDRA-UMC-ANOMALY-DETECTOR
 
 <p align="center"><a href="README.md">🇺🇸 English</a> | <a href="README_spa.md">🇪🇸 Español</a> | <a href="README_fra.md">🇫🇷 Français</a> | <a href="README_ita.md">🇮🇹 Italiano</a> | <a href="README_deu.md">🇩🇪 Deutsch</a> | <a href="README_zho.md">🇨🇳 简体中文</a> | 🇯🇵 <b>日本語</b> | <a href="README_por.md">🇵🇹 Português</a></p>
 
 ### 🧠 統計的な異常検知とモーター振動分析(機械学習モデルは使用していません)
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Licencia-GPL%203.0--or--later-blue.svg" alt="GPL 3.0 or later">
+  <img src="https://img.shields.io/badge/License-GPL%203.0--or--later-blue.svg" alt="GPL 3.0 or later">
   <img src="https://img.shields.io/badge/Tech-Python%20%2F%20NumPy-blueviolet.svg" alt="Tech">
   <img src="https://img.shields.io/badge/Method-FFT%20%2F%20Spectrogram-orange.svg" alt="Method">
+  <img src="https://img.shields.io/badge/Tests-154%20passing-2ea44f.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Version-0.1.8-0f6cbd.svg" alt="Version">
+  <img src="https://img.shields.io/badge/Maturity-functional-0F6CBD.svg" alt="Maturity">
 </p>
 
 ---
 
 > **誠実性チェック - 今日実際に動くもの:** FFT スペクトル（`fft.py`）、ビンごとの統計ベースライン（`baseline.py`）、max-z-score 異常検知器（`detector.py`）、ラベル付きフィクスチャ上での精度/再現率/F1 指標（`metrics.py`）、移動平均によるドリフト検知（`drift.py`）、本物の HYDRA-UMC-DATALAKE HTTP クライアント（`datalake_client.py`）、そして素の JSON/HTTP API（`api.py`）は本物であり、テスト済みである（87件のテストが通過：`pytest tests/` - `test_fft.py`、`test_baseline.py`、`test_detector.py`、`test_metrics.py`、`test_drift.py`、`test_datalake_client.py`、`test_api.py`）。以下の「AI-driven」および「Learning Models」は、健全と分かっているウィンドウから適合させた統計ベースラインを伴う本物の信号処理を指しており、学習済みのニューラルネットワークでも、バックグラウンドでの継続的な学習でもない：ベースラインは一度だけ適合され、起動時に本物の DATALAKE 履歴から、あるいは明示的な `POST /baseline/fit` 呼び出しによって適合し、次に明示的に再適合されるまでそのモデルバージョンのまま保たれる（`detector.py` 自身のモデルバージョン管理を参照）。以下の ROADMAP のフェーズ3・4（教師なし学習、音響解析）は完全に構想段階であり、本リポジトリにはどちらのコードもまだ存在しない。これまでに実際に出荷された内容は `CHANGELOG.md` を参照。
 
----
-
 > **安全性とセキュリティの現状:** このエコシステムは認証された安全システムではありません。ハードウェアの E-STOP 経路、ファームウェアが強制する制限やインターロック、検証済みの動作コマンドはまだありません。ファームウェアイメージは CRC32 と共有鍵の HMAC-SHA256 で検査しており、非対称署名ではありません。TLS と相互 TLS は任意で、既定では無効です。独自基板はまだ実装も試験もされていません。ここに書かれた内容を人の安全のために頼る前に、[セキュリティベースライン](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/SECURITY_BASELINE.md)と[脅威モデル](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/THREAT_MODEL.md)をお読みください。
+
+---
 
 ## 📋 ひと目で
 
@@ -28,10 +37,12 @@
 |---|---|
 | バージョン | `0.1.8` |
 | 成熟度 | 機能する |
-| テスト | 73 (`pytest tests/`) |
+| テスト | 154 (`python -m pytest -q tests`) |
 | 技術 | Python / FFT / statistical baseline detection |
 | 対象 | HYDRA-UMC セルの Raspberry Pi CM5 |
 | 実機での確認 | まだです：このバージョンについて実機での動作記録はありません |
+
+**移動：** [概要](#-概要) · [アーキテクチャ](#-アーキテクチャ) · [機能](#-機能) · [セキュリティと安全](#-セキュリティと安全) · [インターフェース](#-インターフェース) · [設定](#-設定) · [クイックスタート](#-クイックスタート) · [テスト](#-テスト) · [トラブルシューティング](#-トラブルシューティング) · [リポジトリの構成](#-リポジトリの構成) · [関連プロジェクト](#-関連プロジェクト)
 
 ## 🚦 プロジェクトの状況
 
@@ -42,31 +53,28 @@
 | 領域 | 状態 | ここでの意味 |
 |---|---|---|
 | ソフトウェア | 🟡 | 主な目的では動作します。足りない点は上の正直さの確認に書かれています |
-| テスト | 🟢 | 自動テスト 73 件。変更のたびに実行されます |
+| テスト | 🟢 | 自動テスト 154 件。変更のたびに実行されます |
 | 実機 | 🔴 | まだです：このバージョンについて実機での動作記録はありません |
 | ドキュメント | 🟢 | 8 言語の README。変更のたびにマニフェストと照合されます |
 
-## 1. 🛠️ 技術概要
+## 🎯 概要
 
 **HYDRA-UMC-ANOMALY-DETECTOR** は、ロボットの健全性を守る積極的な守護者を目指しています。テレメトリのサンプル（振動、モーター電流の特徴、熱プロファイル）に FFT と統計的ベースライン（機械学習モデルは使用しません）を適用し、健全なベースラインからの逸脱を検知します。故障の予測はまだ行いません。
 
 すべてのモーターとツールヘッドの「デジタル指紋」を監視し、軸受の摩耗、ベルトの緩み、冷却系の故障を数週間前から見つけて、緊急修理ではなく計画的な保守を可能にすることを目指しています(計画中:故障予測のコードはまだありません)。
 
-### 主な機能：
-* **系列ごとに 1 つの検知器(`/detectors/{sourceId}/{kind}/{field}/...`)。** モーターと主軸は同じようには振動せず、共有のベースライン 1 つでは一方がもう一方を異常と判定していました。`POST /detectors/{sourceId}/{kind}/{field}/fit` はその系列(DATALAKE が保存するときの 3 つ組)のベースラインを学習し、`.../detect` はそれに対してウィンドウを採点し、`.../drift/init` と `.../drift/observe` は専用のドリフト監視を与え、`GET /detectors` は系列と学習済みかどうかを一覧します。系列は最初に成功した学習で作られ、最大 `--max-series`(64)件です。一度も学習していない系列の採点は `409` で、別のベースラインによる判定にはなりません。ある系列の学習が別の系列や共有のものに触れることはありません。書き込みは共有ベースラインと同じくトークンが必要で、採点もトークンが設定されている限り必要です（`--no-protect-reads` で開放）。`--baseline-dir` は系列ごとにベースラインを保存し、起動時に復元します。従来のルートは変わりません。*(実装済み、`tests/test_series.py` でテスト済み)*
-* **読み取りは既定で保護されます（`--protect-reads`）。** トークンを設定すると、`POST /detect` も `Authorization: Bearer <token>` を要求します。ヘルスパスの `GET /stats` だけは開いたままです。トークンがある限りこれが既定です（`--no-protect-reads` または `HYDRA_UMC_ANOMALY_PROTECT_READS=0` で読み取りを開放、`HYDRA_UMC_ANOMALY_PROTECT_READS=1` はトークンなしでは起動を拒否）。トークンがない場合（ループバックのみ）は要求するものがありません。HYDRA-UMC-SERVER 経由で読む呼び出し元はすでにトークンを送っています。
-* 🔍 **特徴分析：** モーター電流サンプルの FFT（高速フーリエ変換）による機械的不均衡の検知。*(実装済み)*
-* 📉 **予知保全：** NEMA モーターと URTC 工具向けの RUL（残存有効寿命）推定——構想段階であり、本リポジトリにはまだこのためのコードは存在しない。
-* 🚨 **早期警報システム：** Studio と Watch インターフェースに直接アラートを表示すること——構想段階であり、現状この検知器は自身の HTTP API で判定結果を公開し、常時モードでは DATALAKE の `anomaly_score` サンプルと MQTT メッセージとしても公開します。DASHBOARD-AI は HYDRA-UMC-SERVER 経由で読みます（同一オリジンなので CORS は不要）。Studio と Watch のインターフェースはまだそのアラームを表示しません。
-* **常時サービスモード（`--follow-config FILE`）。** 設定した各系列を、DATALAKE から増えていくそばから読み、サンプリングが不規則な箇所で切り、その系列の検知器で完全な窓ごとに採点し、判定を種別 `anomaly_score` のサンプルとして書き戻します。`mqtt` を設定すると、系列の状態が変わったときに保持される状態メッセージを、異常な窓ごとにアラームを公開します。調整する値（系列、窓サイズ、間隔、トピック、ブローカー）はすべて JSON ファイルにあり、止まっている DATALAKE やブローカーは `GET /stats` で数えられるだけでループを止めません。*（実装済み。実物の HTTP DATALAKE 代役と実物の TCP ブローカー代役に対してテスト済みで、本物のサービスでは未実行）*
-* 🧬 **ベースライン学習：** データレイクの実際の健全な履歴からその統計ベースラインを適合させる——バックグラウンドでの継続的な学習ではなく、要求されるたびに行われる本物の明示的な再適合である。*(実装済み)*
-* 🏷️ **モデルバージョニング：** すべての `Verdict` は、実際に採点されたモデルバージョンと閾値を、単調増加する本物の値として保持します——リフィット（再学習）は本物の、追跡可能なイベントです。また、ベースラインを何個の正常ウィンドウで較正したかも報告するため、アラームを説明・再現できます。*(実装済み)*
-* 📐 **精度/再現率メトリクス：** ラベル付きフィクスチャ(`metrics.py`)に基づいて計算された本物の precision/recall/F1 であり、スコアの分離についての文章による主張だけではありません。*(実装済み)*
-* 📈 **シミュレートされたドリフト検知：** `DriftMonitor` は、個々のウィンドウ自体の異常フラグとは異なる、本物の持続的な移動平均の上昇を検知します。*(実装済み)*
+## 🧩 HYDRA-UMC での役割
 
----
+**HYDRA-UMC-ANOMALY-DETECTOR** は HYDRA-UMC-DATALAKE が保管するテレメトリを読み、以前と違う挙動の系列（鳴き始めたベアリング、ドリフトするドライブ）を見つけ、HTTP、データレイクへの書き戻し、MQTT 警報で知らせます。監視するだけで、機械に指令は出しません。
 
-## 2. 🔄 検知パイプライン
+## 🏛️ アーキテクチャ
+
+<p align="center">
+  <img src="images/architecture.svg" alt="HYDRA-UMC-ANOMALY-DETECTOR architecture" width="100%">
+</p>
+
+<details>
+<summary>図のテキスト版（Mermaid）</summary>
 
 ```mermaid
 flowchart TB
@@ -78,9 +86,9 @@ flowchart TB
     ALRT --> REP["Production Report Flag"]
 ```
 
----
+</details>
 
-## 3. 🧱 アーキテクチャと設計上の決定
+**この作りにした理由**
 
 * **HYDRA-UMC-DATALAKE のサブモジュールではなく兄弟プロジェクトである理由。** 異常検知は、既に保存されたテレメトリに対する読み取り専用の分析ワークロードです——独立させておくことで、検出器のクラッシュや遅いモデル推論が、HYDRA-UMC-TELEMETRY-COLLECTOR による同じストアへの書き込みをブロックすることは決してありません。
 * **今日は FFT + 統計的ベースラインであり、まだ学習済みニューラルネットワークではない理由。** README はこれを「AI 駆動」と呼んでいます——この最初のパスで本物であり実際に動いているのは、本物の信号処理技術(`src/hydra_umc_anomaly_detector/fft.py`、numpy 自体の FFT)に加え、既知の健全なウィンドウから学習した周波数ビンごとの統計的ベースライン(`baseline.py`)、そして max-z-score による判定(`detector.py`)です——学習済みのディープラーニングモデルではありません。実際に動作し、本プロジェクト自身の合成的な故障信号に対して実際にテストされており、後で学習モデルを構築する際の正しい土台です(下記の「ロードマップ」セクションを参照)——しかしここでニューラルネットワークと呼ぶと、実際に動いている内容を過大に評価することになります。
@@ -89,59 +97,77 @@ flowchart TB
 * **`DriftMonitor` が `AnomalyDetector.score()` とは別のメカニズムであり、単に大きな閾値ではない理由。** 両者は異なる本物の問いに答えます——「このウィンドウが異常かどうか」(一回限りの判定)と、「直近の平均が静かにシフトしたかどうか」(単一のノイズの多い外れ値ウィンドウに対して頑健な、移動的な傾向)です。実際のシミュレートされたドリフトテストにより、この検出器の max-z-score 設計では、新しい周波数タイプの故障に対して、単一ウィンドウ自体のフラグが移動ドリフト信号よりも*先に*発火することが判明し、その事実が正直に文書化されています——ここでの `DriftMonitor` の本当の価値は、より早い警告ではなく持続的な傾向の確認であり、コード自体もそれを誇張せずそのように述べています。
 * **`metrics.py` が閾値の品質を文章のままにせず precision/recall を計算する理由。** `detector.py` 自身の docstring は、以前は「健全なものは最大で約 5.3、故障のあるものは数百のスコアになる」としか主張していませんでした——本物ではありますが、将来の再調整に対して回帰テストできる数値ではありませんでした。同じ本物のフィクスチャに対する `precision_recall()` は、これに本物の、検証可能な値(現在は 1.0/1.0)を与えます。
 
----
+## ✨ 機能
 
-## 📂 リポジトリ構成
+* **系列ごとに 1 つの検知器(`/detectors/{sourceId}/{kind}/{field}/...`)。** モーターと主軸は同じようには振動せず、共有のベースライン 1 つでは一方がもう一方を異常と判定していました。`POST /detectors/{sourceId}/{kind}/{field}/fit` はその系列(DATALAKE が保存するときの 3 つ組)のベースラインを学習し、`.../detect` はそれに対してウィンドウを採点し、`.../drift/init` と `.../drift/observe` は専用のドリフト監視を与え、`GET /detectors` は系列と学習済みかどうかを一覧します。系列は最初に成功した学習で作られ、最大 `--max-series`(64)件です。一度も学習していない系列の採点は `409` で、別のベースラインによる判定にはなりません。ある系列の学習が別の系列や共有のものに触れることはありません。書き込みは共有ベースラインと同じくトークンが必要で、採点もトークンが設定されている限り必要です（`--no-protect-reads` で開放）。`--baseline-dir` は系列ごとにベースラインを保存し、起動時に復元します。従来のルートは変わりません。*(実装済み、`tests/test_series.py` でテスト済み)*
+* **読み取りは既定で保護されます（`--protect-reads`）。** トークンを設定すると、`POST /detect` も `Authorization: Bearer <token>` を要求します。ヘルスパスの `GET /stats` だけは開いたままです。トークンがある限りこれが既定です（`--no-protect-reads` または `HYDRA_UMC_ANOMALY_PROTECT_READS=0` で読み取りを開放、`HYDRA_UMC_ANOMALY_PROTECT_READS=1` はトークンなしでは起動を拒否）。トークンがない場合（ループバックのみ）は要求するものがありません。HYDRA-UMC-SERVER 経由で読む呼び出し元はすでにトークンを送っています。
+* 🔍 **特徴分析：** モーター電流サンプルの FFT（高速フーリエ変換）による機械的不均衡の検知。*(実装済み)*
+* 📉 **予知保全：** NEMA モーターと URTC 工具向けの RUL（残存有効寿命）推定——構想段階であり、本リポジトリにはまだこのためのコードは存在しない。
+* 🚨 **早期警報システム：** Studio と Watch インターフェースに直接アラートを表示すること——構想段階であり、現状この検知器は自身の HTTP API で判定結果を公開し、常時モードでは DATALAKE の `anomaly_score` サンプルと MQTT メッセージとしても公開します。DASHBOARD-AI は HYDRA-UMC-SERVER 経由で読みます（同一オリジンなので CORS は不要）。Studio と Watch のインターフェースはまだそのアラームを表示しません。
+* **常時サービスモード（`--follow-config FILE`）。** 設定した各系列を、DATALAKE から増えていくそばから読み、サンプリングが不規則な箇所で切り、その系列の検知器で完全な窓ごとに採点し、判定を種別 `anomaly_score` のサンプルとして書き戻します。`mqtt` を設定すると、系列の状態が変わったときに保持される状態メッセージを、異常な窓ごとにアラームを公開します。調整する値（系列、窓サイズ、間隔、トピック、ブローカー）はすべて JSON ファイルにあり、止まっている DATALAKE やブローカーは `GET /stats` で数えられるだけでループを止めません。*（実装済み。実物の HTTP DATALAKE 代役と実物の TCP ブローカー代役に対してテスト済みで、本物のサービスでは未実行）*
+* 🧬 **ベースライン学習：** データレイクの実際の健全な履歴からその統計ベースラインを適合させる——バックグラウンドでの継続的な学習ではなく、要求されるたびに行われる本物の明示的な再適合である。*(実装済み)*
+* 🏷️ **モデルバージョニング：** すべての `Verdict` は、実際に採点されたモデルバージョンと閾値を、単調増加する本物の値として保持します——リフィット（再学習）は本物の、追跡可能なイベントです。また、ベースラインを何個の正常ウィンドウで較正したかも報告するため、アラームを説明・再現できます。*(実装済み)*
+* 📐 **精度/再現率メトリクス：** ラベル付きフィクスチャ(`metrics.py`)に基づいて計算された本物の precision/recall/F1 であり、スコアの分離についての文章による主張だけではありません。*(実装済み)*
+* 📈 **シミュレートされたドリフト検知：** `DriftMonitor` は、個々のウィンドウ自体の異常フラグとは異なる、本物の持続的な移動平均の上昇を検知します。*(実装済み)*
 
-純粋なソフトウェアサービス（ML/分析）——独自のハードウェア/ファーム
-ウェア/OS を持たず、テンプレートから省略されています（エコシステムの
-リポジトリ構造ポリシーに従って省略されています）。
+## 🔒 セキュリティと安全
 
-```text
-HYDRA-UMC-ANOMALY-DETECTOR/
-├── src/hydra_umc_anomaly_detector/  # ソースコード
-│   ├── __init__.py                  # パッケージバージョン
-│   ├── fft.py                       # 本物の FFT ベースのスペクトル(numpy)
-│   ├── baseline.py                  # ビンごとの健全な統計プロファイル(平均/標準偏差)
-│   ├── detector.py                  # Baseline をフィットし、ライブウィンドウをそれに対して採点
-│   ├── metrics.py                   # ラベル付きフィクスチャに基づく本物の precision/recall/F1
-│   ├── drift.py                     # 移動平均による本物のドリフト検知
-│   ├── datalake_client.py            # HYDRA-UMC-DATALAKE からタイムスタンプ順のポイントを取得し、固定長ウィンドウに分割
-│   ├── registry.py                   # (sourceId, kind, field) ごとに 1 つの検知器:上限あり、キーのダイジェストで保存
-│   ├── follower.py                   # 常時サービスモード: DATALAKE から系列を読み、採点し、判定を書き戻し、アラームを出す
-│   ├── mqtt_publish.py               # アラーム用の最小限の MQTT 3.1.1 パブリッシャー（QoS 0）
-│   ├── api.py                        # detector を包む単純な JSON/HTTP ハンドラー
-│   └── main.py                       # エントリポイント：すべてを接続し、HTTP サーバーを起動
-├── tests/                   # pytest - FFT の正しさ、baseline の統計、実際の故障検知、メトリクス、シミュレートされたドリフト
-├── docs/
-│   └── API.md               # 本物の HTTP エンドポイントリファレンス（リクエスト、レスポンス、ステータスコード）
-├── images/                  # メディアと図版
-├── systemd/
-│   └── hydra-umc-anomaly-detector.service # CM5 上のローカル異常検知 API 用 systemd ユニット
-├── tools/
-│   ├── build_test.py        # バージョンを更新しないビルド/コンパイル確認
-│   ├── ci_validate.py       # CI が使用する manifest/CHANGELOG/docs の検証
-│   ├── _doc_policy.py       # ファミリー共通のドキュメント規則 (HYDRA-UMC-SDK のコピーで、同期を維持)
-│   ├── _readme_parity.py    # 8つの README が同じ構造であることの検査 (HYDRA-UMC-SDK のコピーで、同期を維持)
-│   └── hydra_project_tool.py # すべてのリポジトリで共通のコマンド: validate、test、ci、version、status、bump
-├── Dockerfile               # サービスのコンテナイメージ
-├── build/                   # ビルド出力（gitignore 対象）
-├── pyproject.toml           # パッケージメタデータ、バージョン、依存関係(numpy)
-├── bump_version.py          # オドメーター式バージョンインクリメント（明示的な `bump` コマンドのみが実行）
-├── bump_manifest_version.py # hydra-umc.project.json のバージョンをネイティブ側と同期（--sync）
-├── build.sh / build.bat     # 実際のビルド：venv + editable インストール + テスト
-├── run.sh / run.bat         # 実際の実行：HTTP API を起動
-└── README.md
+| 脅威 | 防御 | 場所 |
+|---|---|---|
+| 誰でもベースラインやドリフト状態を書き換えられる | 定数時間で比較される Bearer トークンが `/baseline/fit`・`/drift/init`・`/drift/observe` と `/detectors/...` の書き込みルートを守ります。トークン未設定なら API は開放です（ループバックの既定） | `api.py` |
+| 他人のデータでの採点と巨大なボディ | `POST /detect` はトークンが設定されていれば要求します（`--no-protect-reads` または `HYDRA_UMC_ANOMALY_PROTECT_READS=0` で開放）。開放のままなのは `GET /stats` だけで、ボディは最大 1 MiB です | `api.py` |
+| 多数の系列によるメモリ枯渇 | 系列ごとに 1 つの検知器で最大 64（`--max-series`）、識別子は `^[A-Za-z0-9][A-Za-z0-9._:-]{0,95}$` に一致。学習が読む点は最大 200 000（`--max-train-points`）で、API は既定で `127.0.0.1` を待ち受けます | `registry.py`, `main.py` |
+
+**絶対にしないこと：** 古典的な統計検知器（FFT ビンごとの z スコア、既定のしきい値 10）であり、学習済みの AI モデルではなく、機械に指令を出すこともありません。
+
+## 🔌 インターフェース
+
+既定は `127.0.0.1:8097` の HTTP。詳しくは `docs/API.md` を参照してください。
+
+| トピックまたはルート | 内容 |
+|---|---|
+| `POST /baseline/fit`, `POST /detect` | 信号のベースラインを学習し、窓をそれに対して採点 |
+| `POST /drift/init`, `POST /drift/observe` | ドリフト監視の開始と入力 |
+| `POST /detectors/{sourceId}/{kind}/{field}/...` | データレイクの 1 系列に対する同じ操作 |
+| `GET /stats`, `GET /detectors` | 稼働状況と検知器の一覧 |
+| `--follow-config FILE.json` | 連続モード：設定した各系列が増えるたびに読み（5 秒ごと、1 回に最大 20 窓）、判定を書き戻し、`hydra/anomaly` 以下に MQTT 警報を送ります |
+
+## ⚙️ 設定
+
+| 変数 | 既定値 | 設定する内容 |
+|---|---|---|
+| `--addr`, `--port` | `127.0.0.1`, `8097` | HTTP API の待ち受け先 |
+| `--sample-rate`, `--threshold` | `1000.0`, `10.0` | サンプリング周波数（Hz）、ビンが取りうる最大の z スコア |
+| `--window`, `--window-size` | `none` | FFT の前に `none` か `hann`、窓あたりのサンプル数（`--datalake-url` と併用で必須） |
+| `--datalake-url`, `--source-id`, `--kind`, `--field`, `--train-start`, `--train-end` | 未設定 | 起動時にデータレイクから新しいベースラインを作る（最初の 4 つはセット） |
+| `--max-train-points`, `--max-series` | `200000`, `64` | 学習で読む最大点数、検知器の最大数 |
+| `--token-file`, `HYDRA_UMC_ANOMALY_TOKEN` | トークンなし | API の Bearer トークン |
+| `HYDRA_UMC_ANOMALY_PROTECT_READS` | トークンがあれば保護 | `0` で `POST /detect` を開放、`1` で保護 |
+| `HYDRA_UMC_DATALAKE_INGEST_TOKEN`, `HYDRA_UMC_DATALAKE_TOKEN`, `HYDRA_UMC_DATALAKE_READ_TOKEN` | 未設定 | 検知器がデータレイクと話すためのトークン（または follow 設定の `ingestTokenFile`） |
+
+## 🚀 クイックスタート
+
+Python 3.10 以上と NumPy 1.24 以上が必要です（`pip install -e .` で入ります）。
+
+```bash
+bash run.sh        # Linux, macOS (run.bat on Windows)
+python -m hydra_umc_anomaly_detector.main --datalake-url http://127.0.0.1:8095 --source-id press1 --kind vibration --field accel --window-size 1024
+curl http://127.0.0.1:8097/stats
 ```
 
-元のテンプレートから省略：`hardware/`、`firmware/`、`os/` —— これは
-純粋なソフトウェアサービス(Python パッケージ)であり、専用のハードウェアや
-ファームウェア、維持すべきオペレーティングシステムイメージもありません。
-完全な HTTP エンドポイントリファレンスは [`docs/API.md`](docs/API.md) を参照。
+## 🧪 テスト
 
----
+`python -m pytest -q tests` で自動テスト 154 件を実行します。現実的な信号、誤検知の確認、偽のデータレイクを使い、ハードウェアも外部ネットワークも不要です。
 
-## 4. ⚙️ ビルドと実行
+| テストファイル | テスト数 | 対象 |
+|---|---|---|
+| `test_fft.py`, `test_baseline.py`, `test_detector.py`, `test_drift.py`, `test_metrics.py` | - | スペクトル、ベースライン、z スコア、ドリフト、適合率/再現率 |
+| `test_realistic_false_positives.py`, `realistic_signals.py`, `signal_fixtures.py` | - | 警報を出してはならない現実的な信号 |
+| `test_api.py`, `test_series.py`, `test_follower.py`, `test_datalake_client.py`, `test_window_token_fetch.py` | - | HTTP の窓口、系列ごとの検知器、連続モード、偽のデータレイクに対するデータレイククライアント |
+
+CI は `HYDRA_UMC_CI=1 python tools/ci_validate.py` を実行し、マニフェスト、文書、8 つの README、図を検査します。
+
+## 🏗️ ビルドとリリース
 
 Python >= 3.10 が必要です。コンパイルできるだけの骨組みではなく、
 HTTP API を備えた本物の FFT ベースの異常検知です。
@@ -202,15 +228,68 @@ python -m pytest tests/ -v   # fft.py(既知の正弦波のピーク周波数が
                               # 対する本物の HTTP 往復テスト)
 ```
 
----
+## 🩺 トラブルシューティング
 
-## 🚀 ロードマップ
+| 表示 | 原因 | 対処 |
+|---|---|---|
+| `401` | API にトークンがあるのに、リクエストにないか誤っています | `Authorization: Bearer <token>` を送ります |
+| `--window-size` is required | `--datalake-url` に窓サイズ・ソース・種類・フィールドが付いていません | `--source-id`・`--kind`・`--field`・`--window-size` を一緒に指定します |
+| false alarms on a healthy machine | ベースラインのデータが少ない・代表的でない、またはしきい値が低すぎます | より長い正常期間で学習し（`--train-start`、`--train-end`）、`--window hann` を使い、`--threshold` を上げます |
+
+## 📂 リポジトリの構成
+
+<p align="center">
+  <img src="images/repository-structure.svg" alt="Repository structure of HYDRA-UMC-ANOMALY-DETECTOR" width="100%">
+</p>
+
+<details>
+<summary>ツリーのテキスト版</summary>
+
+```text
+HYDRA-UMC-ANOMALY-DETECTOR/
+├── src/hydra_umc_anomaly_detector/
+│   ├── fft.py                                   FFT による特徴抽出、窓関数
+│   ├── baseline.py                              ビンごとの統計プロファイル
+│   ├── detector.py                              z スコア検知器としきい値
+│   ├── drift.py                                 ドリフト監視
+│   ├── registry.py                              系列ごとに 1 つの検知器
+│   ├── follower.py                              DATALAKE 上の連続モード
+│   ├── api.py main.py                           HTTP の窓口とエントリー
+│   ├── datalake_client.py                       DATALAKE の HTTP クライアント
+│   ├── mqtt_publish.py                          最小限の MQTT 警報発行
+│   └── metrics.py                               適合率・再現率・F1
+├── tests/                                       154 件（現実的な信号付き）
+├── docs/                                        API リファレンス
+├── systemd/                                     CM5 用のサービスユニット
+├── tools/                                       ビルド・テスト実行、バージョン引き上げ、CI 検証、README と図の生成・検査
+├── images/                                      バナーと README の図
+├── .github/                                     CI ワークフローと Issue テンプレート
+├── pyproject.toml                               パッケージのメタデータと依存関係
+├── hydra-umc.project.json                       マニフェスト：バージョン・成熟度・ファミリー
+├── CHANGELOG.md                                 各バージョンの変更点
+├── build.sh build.bat                           ビルドスクリプト（バージョンは変えません）
+├── build-test.sh build-test.bat                 ビルドスクリプト（バージョンは変えません）
+├── test.sh test.bat                             テストを実行
+├── bump_version.py / bump_manifest_version.py   明示的なバージョン引き上げ
+├── Dockerfile                                   コンテナイメージ
+├── run.sh run.bat                               サービスを起動
+└── SECURITY.md SUPPORT.md CONTRIBUTING.md CODE_OF_CONDUCT.md LICENSE LICENSE.md
+```
+
+</details>
+
+## 🗺️ ロードマップと既知の制限
+
+**現時点の既知の制限**
+
 * **フェーズ 1：** 履歴分析のためのデータレイクの高スループット取り込みとインデックス作成。
 * **フェーズ 2：** テレメトリコレクターのエッジ圧縮と安全な送信プロトコル。
 * **フェーズ 3：** 教師なし学習とモーター振動分析を用いた異常検知。
 * **フェーズ 4：** 早期の機械的問題を「聞き取る」音響分析の統合と、AI 駆動の予測的インサイト。
 
----
+## 🌍 言語
+
+この README とリポジトリの文書は、英語・スペイン語・ドイツ語・フランス語・イタリア語・日本語・中国語・ポルトガル語（ポルトガル）の 8 言語で提供されています。8 つのファイルは同時に書かれ、同じ節と同じリンクを持つことを CI が確認します。 このリポジトリには独自の画面もメッセージカタログもないため、翻訳すべきインターフェース文字列はありません。
 
 ## 🔗 関連プロジェクト
 
@@ -303,21 +382,27 @@ python -m pytest tests/ -v   # fft.py(既知の正弦波のピーク周波数が
 - **[HYDRA-UMC-OPS-AGENT](https://github.com/JuanenRac/HYDRA-UMC-OPS-AGENT)** — 保守インシデントコーディネーター: 低権限のエッジ役割がサニタイズされたインベントリ/ヘルスのスナップショットを収集し、コントロールプレーン役割がそれを読み取り専用でレンダリングして AI プロバイダーに診断の提案を依頼します - パッチを適用することも、何かをデプロイすることも決してありません。
 - **[HYDRA-UMC-DEV-SERVER](https://github.com/JuanenRac/HYDRA-UMC-DEV-SERVER)** — 再現可能な開発ホスト（Raspberry Pi 5 / CM5）。エコシステムのソースコードを保管し、永続キューのもとで境界の明確なビルド/テストタスクを実行する。運用中の CM5 とは明確に異なる、開発専用の役割。
 
+## 📚 ドキュメント
 
----
+さらに読むには：
 
-## 📚 ドキュメント & コミュニティ
+* [docs/API.md](docs/API.md) - 各ルート、トークンの規則、エラー
+* [エコシステムのセキュリティ基準](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/SECURITY_BASELINE.md)
+* [エコシステムの脅威モデル](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/THREAT_MODEL.md)
+* [このリポジトリの変更履歴](CHANGELOG.md)
+* [このリポジトリのライセンス](LICENSE.md)
 
-- **[CONTRIBUTING.md](CONTRIBUTING.md)** —— プルリクエストのための技術スタックとコーディング指針。
-- **[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)** —— このコミュニティで期待される行動規範。
-- **[SECURITY.md](SECURITY.md)** —— 脆弱性の報告方法と、このプロジェクトの実際のセキュリティ重点領域。
-- **[SUPPORT.md](SUPPORT.md)** —— 質問の投稿先とバグの報告先。
-- **[LICENSE.md](LICENSE.md)** —— このプロジェクト自身のライセンス。
+## 🤝 コントリビュートとコミュニティ
+
+* プルリクエストの前に `HYDRA_UMC_CI=1 py -3 tools/ci_validate.py`（または `HYDRA_UMC_CI=1 python3 tools/ci_validate.py`）を実行してください。`CI_VALIDATION=PASS` と表示される必要があります。この確認に `build.sh` や `build.bat` は使わないでください。ビルドは検査ではありません。
+* 8 つの README は HYDRA-UMC-DOCS の 1 つのソースから書かれます。手で編集しないでください。ソースを変更し、`tools/make_readmes.py` で書き直します。
+* 実行していないことを README に書かないでください。事実であれば「シミュレーションのみ」「実機では未確認」と書きます。
+* [CONTRIBUTING.md](CONTRIBUTING.md)、[行動規範](CODE_OF_CONDUCT.md)、[SECURITY.md](SECURITY.md)、[SUPPORT.md](SUPPORT.md) を参照してください。
 
 ## 👤 作者
-**JuanenRac** (Electro Hobby 3D)
-📧 electrohobby3d@gmail.com
-📺 [youtube.com/@electrohobby3d](https://youtube.com/@electrohobby3d)
+
+**JuanenRac (Electro Hobby 3D)** · electrohobby3d@gmail.com
 
 ## 📜 ライセンス
-GPL-3.0-or-later —— 詳細は LICENSE を参照してください。
+
+GPL-3.0-or-later - [LICENSE](LICENSE).

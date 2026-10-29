@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **README in the universal layout:** the README and its seven translations follow the layout that the four families share (22 sections in a fixed order), with an architecture picture and a repository-structure picture drawn from `docs/architecture.json` and `docs/structure.json`; the CI validator checks both pictures and the file tree. Where the repository has a service or an MQTT transport, the README now says how to start it and which environment variables it reads.
+
 - **The layout of the README is checked in the CI:** the validator runs `tools/universal_readme_check.py` and lists, as a warning, what differs from the universal layout of the README.
 
 ## [0.1.8] - Continuous service mode (`--follow-config FILE`) and one detector per series
@@ -286,7 +288,7 @@ All notable changes to this project are documented here.
 
 - **`src/hydra_umc_anomaly_detector/main.py`** - minimal real entry point. No detection logic yet - statistical/ML-based anomaly detection over HYDRA-UMC-DATALAKE's own telemetry lands in a later pass.
 - **`pyproject.toml`** - packaging metadata, no runtime dependencies yet.
-- **`bump_version.py`** - ecosystem-standard odometer bump script.
+- **`bump_version.py`** - ecosystem-standard bump script.
 - **`build.sh` / `build.bat`**, **`run.sh` / `run.bat`** - venv creation, editable install, compile-check, and entry-point execution.
 
 ## Earlier history
