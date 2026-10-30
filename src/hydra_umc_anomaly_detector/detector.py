@@ -51,7 +51,8 @@ class Verdict:
 
 class AnomalyDetector:
     def __init__(
-        self, sample_rate: float, *, threshold: float = 10.0, window: str = "none", legacy_baseline: bool = False
+        self, sample_rate: float, *, threshold: float = 10.0, window: str = "none", legacy_baseline: bool = False,
+        min_windows: int | None = None, ddof: int | None = None,
     ) -> None:
         """`threshold` is a cutoff on the WORST (max) per-bin z-score
         across the whole spectrum - taking a max over many bins (a
@@ -79,6 +80,9 @@ class AnomalyDetector:
         self._window = window
         # True restores the earlier fit: 2 windows are enough and the spread is the population one (ddof=0).
         self._legacy_baseline = legacy_baseline
+        # Explicit values (from the detector configuration file) win over both the default and the legacy preset.
+        self._min_windows = min_windows
+        self._ddof = ddof
         self._threshold = threshold
         self._baseline: Baseline | None = None
         # 0 means "never fitted" (is_fitted is False) - real, monotonic
@@ -99,8 +103,8 @@ class AnomalyDetector:
             healthy_windows,
             self._sample_rate,
             window=self._window,
-            min_windows=LEGACY_MIN_WINDOWS if self._legacy_baseline else None,
-            ddof=LEGACY_DDOF if self._legacy_baseline else None,
+            min_windows=self._min_windows if self._min_windows is not None else (LEGACY_MIN_WINDOWS if self._legacy_baseline else None),
+            ddof=self._ddof if self._ddof is not None else (LEGACY_DDOF if self._legacy_baseline else None),
         )
 
     def adopt(self, baseline: Baseline) -> None:
@@ -142,6 +146,14 @@ class AnomalyDetector:
     @property
     def legacy_baseline(self) -> bool:
         return self._legacy_baseline
+
+    @property
+    def min_windows(self) -> int | None:
+        return self._min_windows
+
+    @property
+    def ddof(self) -> int | None:
+        return self._ddof
 
     @property
     def sample_rate(self) -> float:

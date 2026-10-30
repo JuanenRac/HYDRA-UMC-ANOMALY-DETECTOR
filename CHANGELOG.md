@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **The tuned values of the detector live in a file:** `--detector-config FILE` (JSON with `threshold`, `window`, `minWindows`, `ddof`, `sampleRate`, `legacyBaseline`) sets what the flags set, and a flag given on the command line wins; `--min-windows` and `--ddof` are new flags. An unknown key or an unreadable file stops the start.
+
 - **A baseline needs ten healthy windows and uses the sample spread:** a baseline fitted from two windows with the population standard deviation underestimated how much a healthy motor varies and raised false alarms. A fit now asks for at least 10 windows and divides by n-1 (`ddof=1`); the threshold is unchanged, so a real anomaly is not hidden. `serve --legacy-baseline` (or `AnomalyDetector(legacy_baseline=True)`, or `min_windows=2, ddof=0` in `fit_baseline`) restores the earlier fit. Baselines already saved keep working as they are.
 
 - **`--window welch`:** averages the power of overlapping Hann segments (half the window long, half overlapped), which makes the magnitudes of a healthy signal vary far less from one window to the next than a single periodogram does; the price is half the frequency resolution. A baseline remembers it like the other windows, a detector with another window refuses it, and the default stays `none`. Recalibrate `--threshold` with real healthy recordings before trusting it.

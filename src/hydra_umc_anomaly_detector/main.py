@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import argparse
 import ipaddress
+import json
 import os
 import sys
 from pathlib import Path
@@ -119,6 +120,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--field", default=None, help="DATALAKE field to fetch training windows from (required with --datalake-url)")
     parser.add_argument("--window-size", type=int, default=None, help="samples per training window (required with --datalake-url)")
     parser.add_argument("--legacy-baseline", action="store_true", help="fit baselines the earlier way: 2 healthy windows are enough and the spread is the population standard deviation (default: at least 10 windows and the sample standard deviation, which gives fewer false alarms)")
+    parser.add_argument("--min-windows", type=int, default=None, help="healthy windows a fit needs (default 10, or 2 with --legacy-baseline); can also be set in --detector-config")
+    parser.add_argument("--ddof", type=int, choices=(0, 1), default=None, help="1 = sample standard deviation (default), 0 = population one; can also be set in --detector-config")
+    parser.add_argument("--detector-config", default=None, help="JSON file with the tuned values of the detector (threshold, window, minWindows, ddof, sampleRate, legacyBaseline); a flag given on the command line wins over the file")
     parser.add_argument("--window", choices=WINDOWS, default="none", help="window applied before the FFT: none (the original behaviour), hann (removes the mean and the leakage of a speed that wanders) or welch (Hann segments averaged in power: steadier magnitudes, half the frequency resolution); recalibrate --threshold with real healthy recordings before trusting hann or welch. A baseline remembers the window it was made with.")
     parser.add_argument("--train-start", type=int, default=None, help="first timestamp (unix ms) of the training history read from DATALAKE")
     parser.add_argument("--train-end", type=int, default=None, help="last timestamp (unix ms) of the training history read from DATALAKE")
@@ -129,7 +133,24 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--protect-reads", dest="protect_reads", action="store_true", default=None, help="POST /detect demands the token too (only GET /stats stays open). This is the default whenever a token is set; HYDRA_UMC_ANOMALY_PROTECT_READS=1 does the same and, unlike the default, refuses to start without a token")
     parser.add_argument("--no-protect-reads", dest="protect_reads", action="store_false", help="leave POST /detect open even though a token is set (HYDRA_UMC_ANOMALY_PROTECT_READS=0 does the same)")
     parser.add_argument("--follow-config", default=None, help="continuous service mode: a JSON file naming the series to read from DATALAKE as they grow, score, write back and raise alarms for (see docs/API.md); every tuned value lives in that file")
+    pre, _ = parser.parse_known_args(argv)
+    if pre.detector_config:
+        try:
+            raw = json.loads(Path(pre.detector_config).read_text(encoding="utf-8"))
+            if not isinstance(raw, dict):
+                raise ValueError("the file must hold a JSON object")
+            names = {"threshold": "threshold", "window": "window", "minWindows": "min_windows", "ddof": "ddof", "sampleRate": "sample_rate", "legacyBaseline": "legacy_baseline"}
+            unknown = sorted(set(raw) - set(names))
+            if unknown:
+                raise ValueError(f"unknown keys: {', '.join(unknown)}")
+            parser.set_defaults(**{names[k]: v for k, v in raw.items()})
+        except (OSError, ValueError) as e:
+            print(f"error: --detector-config: {e}", file=sys.stderr)
+            return 2
     args = parser.parse_args(argv)
+    if args.window not in WINDOWS or (args.min_windows is not None and args.min_windows < 2):
+        print("error: window must be one of " + ", ".join(WINDOWS) + " and min-windows at least 2", file=sys.stderr)
+        return 2
 
     token = os.environ.get("HYDRA_UMC_ANOMALY_TOKEN", "")
     if args.token_file:
@@ -156,7 +177,7 @@ def main(argv: list[str] | None = None) -> int:
     print(f"{PROJECT_NAME} v{__version__}")
     print(ROLE)
 
-    detector = AnomalyDetector(sample_rate=args.sample_rate, threshold=args.threshold, window=args.window, legacy_baseline=args.legacy_baseline)
+    detector = AnomalyDetector(sample_rate=args.sample_rate, threshold=args.threshold, window=args.window, legacy_baseline=args.legacy_baseline, min_windows=args.min_windows, ddof=args.ddof)
     baseline_path = Path(args.baseline_path) if args.baseline_path else None
 
     if args.datalake_url is not None:
@@ -208,7 +229,7 @@ def main(argv: list[str] | None = None) -> int:
         print("error: --max-series must be at least 1", file=sys.stderr)
         return 2
     registry = DetectorRegistry(
-        lambda: AnomalyDetector(sample_rate=args.sample_rate, threshold=args.threshold, window=args.window, legacy_baseline=args.legacy_baseline),
+        lambda: AnomalyDetector(sample_rate=args.sample_rate, threshold=args.threshold, window=args.window, legacy_baseline=args.legacy_baseline, min_windows=args.min_windows, ddof=args.ddof),
         Path(args.baseline_dir) if args.baseline_dir else None,
         args.max_series,
     )

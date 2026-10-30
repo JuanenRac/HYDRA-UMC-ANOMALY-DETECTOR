@@ -201,3 +201,27 @@ def test_the_legacy_limits_are_still_available_and_the_detector_flag_selects_the
         fit_baseline(windows, sample_rate=1000.0, min_windows=1)
     with pytest.raises(BaselineError, match="ddof"):
         fit_baseline(windows, sample_rate=1000.0, ddof=2)
+
+
+@pytest.mark.strict_baseline
+def test_detector_min_windows_and_ddof_from_settings():
+    import numpy as np
+    from hydra_umc_anomaly_detector.detector import AnomalyDetector
+
+    rng = np.random.default_rng(1)
+    windows = [rng.normal(size=256) for _ in range(4)]
+    detector = AnomalyDetector(1000.0, min_windows=3, ddof=0)
+    detector.fit(windows)
+    assert detector.is_fitted
+    strict = AnomalyDetector(1000.0)
+    with pytest.raises(BaselineError):
+        strict.fit(windows)
+
+
+def test_main_rejects_bad_detector_config(tmp_path):
+    from hydra_umc_anomaly_detector.main import main
+
+    bad = tmp_path / "d.json"
+    bad.write_text('{"nope": 1}', encoding="utf-8")
+    assert main(["--addr", "127.0.0.1", "--port", "0", "--detector-config", str(bad)]) == 2
+    assert main(["--addr", "127.0.0.1", "--port", "0", "--detector-config", str(tmp_path / "missing.json")]) == 2
