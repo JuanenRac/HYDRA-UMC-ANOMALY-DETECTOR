@@ -18,7 +18,7 @@ GPL-3.0-or-later - see LICENSE
   <img src="https://img.shields.io/badge/License-GPL%203.0--or--later-blue.svg" alt="GPL 3.0 or later">
   <img src="https://img.shields.io/badge/Tech-Python%20%2F%20NumPy-blueviolet.svg" alt="Tech">
   <img src="https://img.shields.io/badge/Method-FFT%20%2F%20Spectrogram-orange.svg" alt="Method">
-  <img src="https://img.shields.io/badge/Tests-154%20passing-2ea44f.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-160%20passing-2ea44f.svg" alt="Tests">
   <img src="https://img.shields.io/badge/Version-0.1.8-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-functional-0F6CBD.svg" alt="Maturity">
 </p>
@@ -37,7 +37,7 @@ GPL-3.0-or-later - see LICENSE
 |---|---|
 | Versão | `0.1.8` |
 | Maturidade | Funcional |
-| Testes | 154 (`python -m pytest -q tests`) |
+| Testes | 160 (`python -m pytest -q tests`) |
 | Tecnologia | Python / FFT / statistical baseline detection |
 | Destino | O Raspberry Pi CM5 de uma célula HYDRA-UMC |
 | Em hardware real | Ainda não: não há registo de execução em hardware real para esta versão |
@@ -53,7 +53,7 @@ Cada linha é uma parte deste repositório e a luz diz até onde chega hoje. É 
 | Área | Estado | O que significa aqui |
 |---|---|---|
 | Software | 🟡 | Funciona para o seu propósito principal; a verificação de honestidade acima lista o que ainda falta |
-| Testes | 🟢 | 154 testes automáticos, executados a cada alteração |
+| Testes | 🟢 | 160 testes automáticos, executados a cada alteração |
 | Hardware real | 🔴 | Ainda não: não há registo de execução em hardware real para esta versão |
 | Documentação | 🟢 | README em oito idiomas, verificado contra o manifesto a cada alteração |
 
@@ -110,6 +110,8 @@ flowchart TB
 * 📐 **Métricas de precisão/recuperação:** precisão/recuperação/F1 reais e calculados sobre um conjunto etiquetado (`metrics.py`), e não apenas afirmações em prosa sobre a separação das pontuações. *(implementado)*
 * 📈 **Deteção simulada de deriva:** o `DriftMonitor` assinala uma elevação real e sustentada da média móvel, distinta da própria marca de anomalia de qualquer janela individual. *(implementado)*
 
+Uma linha de base precisa de pelo menos dez janelas saudáveis e usa o desvio-padrão amostral (`ddof=1`); o limiar de alarme não muda, por isso uma anomalia real não fica escondida. As linhas de base guardadas antes continuam a funcionar tal como estão.
+
 ## 🔒 Segurança e proteção
 
 | Ameaça | Defesa | Onde |
@@ -131,6 +133,8 @@ HTTP em `127.0.0.1:8097` por predefinição; a referência completa é `docs/API
 | `POST /detectors/{sourceId}/{kind}/{field}/...` | as mesmas operações para uma série do data lake |
 | `GET /stats`, `GET /detectors` | saúde e lista de detetores |
 | `--follow-config FILE.json` | modo contínuo: lê cada série configurada à medida que cresce (a cada 5 s, no máximo 20 janelas por ciclo), escreve o veredicto de volta e envia alarmes MQTT sob `hydra/anomaly` |
+
+`serve --legacy-baseline` (ou `AnomalyDetector(legacy_baseline=True)`) repõe o ajuste anterior com duas janelas e o desvio populacional; está desligado por predefinição.
 
 ## ⚙️ Configuração
 
@@ -157,7 +161,7 @@ curl http://127.0.0.1:8097/stats
 
 ## 🧪 Testes
 
-154 testes automáticos correm com `python -m pytest -q tests`. Usam sinais realistas, verificações de falsos positivos e um data lake simulado; sem hardware nem rede externa.
+160 testes automáticos correm com `python -m pytest -q tests`. Usam sinais realistas, verificações de falsos positivos e um data lake simulado; sem hardware nem rede externa.
 
 | Ficheiro de testes | Testes | O que cobre |
 |---|---|---|

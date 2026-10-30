@@ -18,7 +18,7 @@ GPL-3.0-or-later - see LICENSE
   <img src="https://img.shields.io/badge/License-GPL%203.0--or--later-blue.svg" alt="GPL 3.0 or later">
   <img src="https://img.shields.io/badge/Tech-Python%20%2F%20NumPy-blueviolet.svg" alt="Tech">
   <img src="https://img.shields.io/badge/Method-FFT%20%2F%20Spectrogram-orange.svg" alt="Method">
-  <img src="https://img.shields.io/badge/Tests-154%20passing-2ea44f.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-160%20passing-2ea44f.svg" alt="Tests">
   <img src="https://img.shields.io/badge/Version-0.1.8-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-functional-0F6CBD.svg" alt="Maturity">
 </p>
@@ -37,7 +37,7 @@ GPL-3.0-or-later - see LICENSE
 |---|---|
 | Version | `0.1.8` |
 | Maturité | Fonctionnel |
-| Tests | 154 (`python -m pytest -q tests`) |
+| Tests | 160 (`python -m pytest -q tests`) |
 | Technologie | Python / FFT / statistical baseline detection |
 | Cible | Le Raspberry Pi CM5 d'une cellule HYDRA-UMC |
 | Sur matériel réel | Pas encore : aucune exécution sur du matériel réel n'est consignée pour cette version |
@@ -53,7 +53,7 @@ Chaque ligne est une partie de ce dépôt et le feu dit où elle en est aujourd'
 | Domaine | État | Ce que cela veut dire ici |
 |---|---|---|
 | Logiciel | 🟡 | Fonctionne pour son usage principal ; la vérification d'honnêteté ci-dessus liste ce qui manque encore |
-| Tests | 🟢 | 154 tests automatiques, exécutés à chaque modification |
+| Tests | 🟢 | 160 tests automatiques, exécutés à chaque modification |
 | Matériel réel | 🔴 | Pas encore : aucune exécution sur du matériel réel n'est consignée pour cette version |
 | Documentation | 🟢 | README en huit langues, vérifié par rapport au manifeste à chaque modification |
 
@@ -110,6 +110,8 @@ flowchart TB
 * 📐 **Métriques précision/rappel :** Precision/recall/F1 réels, calculés sur un jeu de données étiqueté (`metrics.py`), pas seulement des affirmations en prose sur la séparation des scores. *(implémenté)*
 * 📈 **Détection de dérive simulée :** `DriftMonitor` signale une élévation soutenue réelle de la moyenne glissante, distincte du propre signal d'anomalie d'une seule fenêtre. *(implémenté)*
 
+Une base de référence demande au moins dix fenêtres saines et utilise l'écart type d'échantillon (`ddof=1`) ; le seuil d'alarme ne change pas, donc une vraie anomalie n'est pas masquée. Les bases enregistrées auparavant continuent de fonctionner telles quelles.
+
 ## 🔒 Sécurité et protection
 
 | Menace | Défense | Où |
@@ -131,6 +133,8 @@ HTTP sur `127.0.0.1:8097` par défaut ; la référence complète est `docs/API.m
 | `POST /detectors/{sourceId}/{kind}/{field}/...` | les mêmes opérations pour une série du data lake |
 | `GET /stats`, `GET /detectors` | santé et liste des détecteurs |
 | `--follow-config FILE.json` | mode continu : lit chaque série configurée à mesure qu'elle grandit (toutes les 5 s, 20 fenêtres au plus par cycle), réécrit le verdict et envoie des alarmes MQTT sous `hydra/anomaly` |
+
+`serve --legacy-baseline` (ou `AnomalyDetector(legacy_baseline=True)`) rétablit l'ajustement précédent à partir de deux fenêtres avec l'écart type de population ; désactivé par défaut.
 
 ## ⚙️ Configuration
 
@@ -157,7 +161,7 @@ curl http://127.0.0.1:8097/stats
 
 ## 🧪 Tests
 
-154 tests automatiques s'exécutent avec `python -m pytest -q tests`. Ils utilisent des signaux réalistes, des contrôles de faux positifs et un faux data lake ; ni matériel ni réseau extérieur.
+160 tests automatiques s'exécutent avec `python -m pytest -q tests`. Ils utilisent des signaux réalistes, des contrôles de faux positifs et un faux data lake ; ni matériel ni réseau extérieur.
 
 | Fichier de tests | Tests | Ce qu'il couvre |
 |---|---|---|

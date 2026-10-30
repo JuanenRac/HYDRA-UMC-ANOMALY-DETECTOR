@@ -18,7 +18,7 @@ GPL-3.0-or-later - see LICENSE
   <img src="https://img.shields.io/badge/License-GPL%203.0--or--later-blue.svg" alt="GPL 3.0 or later">
   <img src="https://img.shields.io/badge/Tech-Python%20%2F%20NumPy-blueviolet.svg" alt="Tech">
   <img src="https://img.shields.io/badge/Method-FFT%20%2F%20Spectrogram-orange.svg" alt="Method">
-  <img src="https://img.shields.io/badge/Tests-154%20passing-2ea44f.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-160%20passing-2ea44f.svg" alt="Tests">
   <img src="https://img.shields.io/badge/Version-0.1.8-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-functional-0F6CBD.svg" alt="Maturity">
 </p>
@@ -37,7 +37,7 @@ GPL-3.0-or-later - see LICENSE
 |---|---|
 | Version | `0.1.8` |
 | Maturity | Functional |
-| Tests | 154 (`python -m pytest -q tests`) |
+| Tests | 160 (`python -m pytest -q tests`) |
 | Stack | Python / FFT / statistical baseline detection |
 | Target | The Raspberry Pi CM5 of a HYDRA-UMC cell |
 | On real hardware | Not yet: no run on real hardware is recorded for this version |
@@ -53,7 +53,7 @@ Each line is one part of this repository and the light says how far it is today.
 | Area | State | What it means here |
 |---|---|---|
 | Software | 🟡 | Works for its main purpose; the honesty check above lists what is still missing |
-| Tests | 🟢 | 154 automated tests, run on every change |
+| Tests | 🟢 | 160 automated tests, run on every change |
 | Real hardware | 🔴 | Not yet: no run on real hardware is recorded for this version |
 | Documentation | 🟢 | README in eight languages, checked against the manifest on every change |
 
@@ -110,6 +110,8 @@ flowchart TB
 * 📐 **Precision/Recall Metrics:** Real, computed precision/recall/F1 over a labeled fixture (`metrics.py`), not just prose claims about score separation. *(implemented)*
 * 📈 **Simulated Drift Detection:** `DriftMonitor` flags a real, sustained rolling-mean elevation distinct from any single window's own anomaly flag. *(implemented)*
 
+A baseline needs at least ten healthy windows and uses the sample standard deviation (`ddof=1`); the alarm threshold is unchanged, so a real anomaly is not hidden. Baselines saved earlier keep working as they are.
+
 ## 🔒 Security & Safety
 
 | Threat | Defence | Where |
@@ -131,6 +133,8 @@ HTTP on `127.0.0.1:8097` by default; the full reference is `docs/API.md`.
 | `POST /detectors/{sourceId}/{kind}/{field}/...` | the same operations for one series of the data lake |
 | `GET /stats`, `GET /detectors` | health and the list of detectors |
 | `--follow-config FILE.json` | continuous mode: reads each configured series as it grows (every 5 s, at most 20 windows per tick), writes the verdict back and sends MQTT alarms under `hydra/anomaly` |
+
+`serve --legacy-baseline` (or `AnomalyDetector(legacy_baseline=True)`) brings back the earlier fit from two windows with the population deviation; it is off by default.
 
 ## ⚙️ Configuration
 
@@ -157,7 +161,7 @@ curl http://127.0.0.1:8097/stats
 
 ## 🧪 Testing
 
-154 automated tests run with `python -m pytest -q tests`. They use realistic signals, false-positive checks and a fake data lake; no hardware and no outside network.
+160 automated tests run with `python -m pytest -q tests`. They use realistic signals, false-positive checks and a fake data lake; no hardware and no outside network.
 
 | Test file | Tests | What it covers |
 |---|---|---|

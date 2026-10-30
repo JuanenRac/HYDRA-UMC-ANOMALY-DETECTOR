@@ -18,7 +18,7 @@ GPL-3.0-or-later - see LICENSE
   <img src="https://img.shields.io/badge/License-GPL%203.0--or--later-blue.svg" alt="GPL 3.0 or later">
   <img src="https://img.shields.io/badge/Tech-Python%20%2F%20NumPy-blueviolet.svg" alt="Tech">
   <img src="https://img.shields.io/badge/Method-FFT%20%2F%20Spectrogram-orange.svg" alt="Method">
-  <img src="https://img.shields.io/badge/Tests-154%20passing-2ea44f.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-160%20passing-2ea44f.svg" alt="Tests">
   <img src="https://img.shields.io/badge/Version-0.1.8-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-functional-0F6CBD.svg" alt="Maturity">
 </p>
@@ -37,7 +37,7 @@ GPL-3.0-or-later - see LICENSE
 |---|---|
 | 版本 | `0.1.8` |
 | 成熟度 | 可用 |
-| 测试 | 154 (`python -m pytest -q tests`) |
+| 测试 | 160 (`python -m pytest -q tests`) |
 | 技术栈 | Python / FFT / statistical baseline detection |
 | 目标 | HYDRA-UMC 工作单元的 Raspberry Pi CM5 |
 | 真实硬件 | 尚未：此版本没有在真实硬件上运行的记录 |
@@ -53,7 +53,7 @@ GPL-3.0-or-later - see LICENSE
 | 领域 | 状态 | 在这里的含义 |
 |---|---|---|
 | 软件 | 🟡 | 主要用途可用；上面的诚实性检查列出了仍然缺少的内容 |
-| 测试 | 🟢 | 154 项自动测试，每次变更都会运行 |
+| 测试 | 🟢 | 160 项自动测试，每次变更都会运行 |
 | 真实硬件 | 🔴 | 尚未：此版本没有在真实硬件上运行的记录 |
 | 文档 | 🟢 | 八种语言的 README，每次变更都会与清单核对 |
 
@@ -111,6 +111,8 @@ flowchart TB
 * 📐 **精确率/召回率指标：** 基于标注测试样本（`metrics.py`）计算得到的真实 precision/recall/F1，而非仅是关于分数分离度的文字描述。*(已实现)*
 * 📈 **模拟漂移检测：** `DriftMonitor` 标记出真实的、持续的滚动均值抬升，这与任何单一窗口自身的异常标记不同。*(已实现)*
 
+基线至少需要十个健康窗口，并使用样本标准差（`ddof=1`）；报警阈值不变，因此真正的异常不会被掩盖。之前保存的基线仍可原样使用。
+
 ## 🔒 安全与防护
 
 | 威胁 | 防御 | 位置 |
@@ -132,6 +134,8 @@ flowchart TB
 | `POST /detectors/{sourceId}/{kind}/{field}/...` | 对数据湖中一个序列的同样操作 |
 | `GET /stats`, `GET /detectors` | 健康状态与检测器列表 |
 | `--follow-config FILE.json` | 连续模式：随各已配置序列增长而读取（每 5 秒，每轮最多 20 个窗口），写回判定，并在 `hydra/anomaly` 下发送 MQTT 报警 |
+
+`serve --legacy-baseline`（或 `AnomalyDetector(legacy_baseline=True)`）会恢复之前用两个窗口和总体标准差的拟合方式；默认关闭。
 
 ## ⚙️ 配置
 
@@ -158,7 +162,7 @@ curl http://127.0.0.1:8097/stats
 
 ## 🧪 测试
 
-运行 `python -m pytest -q tests` 会执行 154 个自动测试，使用逼真的信号、误报检查和模拟数据湖；不需要硬件和外部网络。
+运行 `python -m pytest -q tests` 会执行 160 个自动测试，使用逼真的信号、误报检查和模拟数据湖；不需要硬件和外部网络。
 
 | 测试文件 | 测试数 | 覆盖内容 |
 |---|---|---|
