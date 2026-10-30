@@ -33,7 +33,7 @@ Fits the detector's statistical baseline from known-healthy signal windows. Must
 }
 ```
 
-`windows` is a non-empty array of arrays - each inner array is one healthy time-domain signal window (floats), sampled at the server's configured `sample_rate`.
+`windows` is a non-empty array of arrays - each inner array is one healthy time-domain signal window (floats), sampled at the server's configured `sample_rate`. At least 10 windows are needed (the baseline uses the sample standard deviation); the server started with `--legacy-baseline` accepts 2 and uses the population one.
 
 **Responses**
 

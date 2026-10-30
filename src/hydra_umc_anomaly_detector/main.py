@@ -118,6 +118,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--kind", default=None, help="DATALAKE kind to fetch training windows from (required with --datalake-url)")
     parser.add_argument("--field", default=None, help="DATALAKE field to fetch training windows from (required with --datalake-url)")
     parser.add_argument("--window-size", type=int, default=None, help="samples per training window (required with --datalake-url)")
+    parser.add_argument("--legacy-baseline", action="store_true", help="fit baselines the earlier way: 2 healthy windows are enough and the spread is the population standard deviation (default: at least 10 windows and the sample standard deviation, which gives fewer false alarms)")
     parser.add_argument("--window", choices=WINDOWS, default="none", help="window applied before the FFT: none (the original behaviour), hann (removes the mean and the leakage of a speed that wanders) or welch (Hann segments averaged in power: steadier magnitudes, half the frequency resolution); recalibrate --threshold with real healthy recordings before trusting hann or welch. A baseline remembers the window it was made with.")
     parser.add_argument("--train-start", type=int, default=None, help="first timestamp (unix ms) of the training history read from DATALAKE")
     parser.add_argument("--train-end", type=int, default=None, help="last timestamp (unix ms) of the training history read from DATALAKE")
@@ -155,7 +156,7 @@ def main(argv: list[str] | None = None) -> int:
     print(f"{PROJECT_NAME} v{__version__}")
     print(ROLE)
 
-    detector = AnomalyDetector(sample_rate=args.sample_rate, threshold=args.threshold, window=args.window)
+    detector = AnomalyDetector(sample_rate=args.sample_rate, threshold=args.threshold, window=args.window, legacy_baseline=args.legacy_baseline)
     baseline_path = Path(args.baseline_path) if args.baseline_path else None
 
     if args.datalake_url is not None:
@@ -207,7 +208,7 @@ def main(argv: list[str] | None = None) -> int:
         print("error: --max-series must be at least 1", file=sys.stderr)
         return 2
     registry = DetectorRegistry(
-        lambda: AnomalyDetector(sample_rate=args.sample_rate, threshold=args.threshold, window=args.window),
+        lambda: AnomalyDetector(sample_rate=args.sample_rate, threshold=args.threshold, window=args.window, legacy_baseline=args.legacy_baseline),
         Path(args.baseline_dir) if args.baseline_dir else None,
         args.max_series,
     )

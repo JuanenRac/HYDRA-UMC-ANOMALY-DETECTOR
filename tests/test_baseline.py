@@ -173,3 +173,31 @@ def test_a_save_that_fails_midway_keeps_the_previous_baseline(tmp_path, monkeypa
     restored, model_version = load_baseline(path)
     assert model_version == 1 and restored.n_windows == 3
     assert sorted(entry.name for entry in tmp_path.iterdir()) == ["baseline.npz"]
+
+
+@pytest.mark.strict_baseline
+def test_the_default_baseline_needs_ten_windows_and_uses_the_sample_spread() -> None:
+    windows = [_sine(50.0, 1000.0, 200) * (1.0 + 0.1 * k) for k in range(10)]
+    with pytest.raises(BaselineError, match="at least 10"):
+        fit_baseline(windows[:9], sample_rate=1000.0)
+    default = fit_baseline(windows, sample_rate=1000.0)
+    legacy = fit_baseline(windows, sample_rate=1000.0, min_windows=2, ddof=0)
+    assert default.n_windows == 10
+    peak = int(np.argmax(default.std))
+    assert default.std[peak] == pytest.approx(legacy.std[peak] * np.sqrt(10 / 9))
+
+
+@pytest.mark.strict_baseline
+def test_the_legacy_limits_are_still_available_and_the_detector_flag_selects_them() -> None:
+    from hydra_umc_anomaly_detector.detector import AnomalyDetector
+
+    windows = [_sine(50.0, 1000.0, 200), _sine(50.0, 1000.0, 200) * 1.1]
+    with pytest.raises(BaselineError):
+        AnomalyDetector(1000.0).fit(windows)
+    legacy = AnomalyDetector(1000.0, legacy_baseline=True)
+    legacy.fit(windows)
+    assert legacy.is_fitted and legacy.legacy_baseline
+    with pytest.raises(BaselineError, match="min_windows"):
+        fit_baseline(windows, sample_rate=1000.0, min_windows=1)
+    with pytest.raises(BaselineError, match="ddof"):
+        fit_baseline(windows, sample_rate=1000.0, ddof=2)

@@ -24,7 +24,13 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from .baseline import Baseline, BaselineError, fit_baseline
+from .baseline import (
+    LEGACY_DDOF,
+    LEGACY_MIN_WINDOWS,
+    Baseline,
+    BaselineError,
+    fit_baseline,
+)
 from .fft import WINDOWS, compute_spectrum
 
 
@@ -44,7 +50,9 @@ class Verdict:
 
 
 class AnomalyDetector:
-    def __init__(self, sample_rate: float, *, threshold: float = 10.0, window: str = "none") -> None:
+    def __init__(
+        self, sample_rate: float, *, threshold: float = 10.0, window: str = "none", legacy_baseline: bool = False
+    ) -> None:
         """`threshold` is a cutoff on the WORST (max) per-bin z-score
         across the whole spectrum - taking a max over many bins (a
         500-sample window has ~250) means even a genuinely healthy
@@ -69,6 +77,8 @@ class AnomalyDetector:
             raise ValueError(f"window must be one of {WINDOWS}, not {window!r}")
         self._sample_rate = sample_rate
         self._window = window
+        # True restores the earlier fit: 2 windows are enough and the spread is the population one (ddof=0).
+        self._legacy_baseline = legacy_baseline
         self._threshold = threshold
         self._baseline: Baseline | None = None
         # 0 means "never fitted" (is_fitted is False) - real, monotonic
@@ -85,7 +95,13 @@ class AnomalyDetector:
         """Computes a new baseline WITHOUT installing it, so a caller that
         shares this detector between threads can do the heavy FFT work
         outside its lock and only swap the result in (`adopt`) inside it."""
-        return fit_baseline(healthy_windows, self._sample_rate, window=self._window)
+        return fit_baseline(
+            healthy_windows,
+            self._sample_rate,
+            window=self._window,
+            min_windows=LEGACY_MIN_WINDOWS if self._legacy_baseline else None,
+            ddof=LEGACY_DDOF if self._legacy_baseline else None,
+        )
 
     def adopt(self, baseline: Baseline) -> None:
         """Installs a baseline from `prepare_fit` as the next model version."""
@@ -122,6 +138,10 @@ class AnomalyDetector:
     @property
     def window(self) -> str:
         return self._window
+
+    @property
+    def legacy_baseline(self) -> bool:
+        return self._legacy_baseline
 
     @property
     def sample_rate(self) -> float:

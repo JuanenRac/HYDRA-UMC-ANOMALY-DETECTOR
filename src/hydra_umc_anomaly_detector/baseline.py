@@ -22,6 +22,15 @@ import numpy as np
 from .fft import WINDOWS, Spectrum, compute_spectrum
 
 
+# A baseline fitted from very few windows underestimates the spread of a healthy motor and raises false alarms,
+# so the default asks for 10 windows and uses the sample standard deviation (ddof=1). The earlier behaviour
+# (2 windows, population standard deviation) is still available as LEGACY_MIN_WINDOWS / LEGACY_DDOF.
+DEFAULT_MIN_WINDOWS = 10
+DEFAULT_DDOF = 1
+LEGACY_MIN_WINDOWS = 2
+LEGACY_DDOF = 0
+
+
 class BaselineError(ValueError):
     """Raised when a Baseline can't legitimately be built or applied -
     e.g. too little training data, or a spectrum shape mismatch."""
@@ -63,6 +72,8 @@ def fit_baseline(
     *,
     min_std: float = 1e-6,
     window: str = "none",
+    min_windows: int | None = None,
+    ddof: int | None = None,
 ) -> Baseline:
     """Builds a Baseline from real "known-healthy" signal windows -
     computes a real FFT per window, then the real per-bin mean/std
@@ -74,9 +85,16 @@ def fit_baseline(
     zero the moment a live reading differs from it at all, which is a
     real numerical failure mode this floor exists specifically to avoid.
     """
-    if len(healthy_windows) < 2:
+    # Read at call time so the defaults above are the single place that sets them.
+    min_windows = DEFAULT_MIN_WINDOWS if min_windows is None else min_windows
+    ddof = DEFAULT_DDOF if ddof is None else ddof
+    if min_windows < 2:
+        raise BaselineError(f"min_windows must be at least 2, got {min_windows}")
+    if ddof not in (0, 1):
+        raise BaselineError(f"ddof must be 0 or 1, got {ddof}")
+    if len(healthy_windows) < min_windows:
         raise BaselineError(
-            f"need at least 2 healthy windows to compute a standard deviation, got {len(healthy_windows)}"
+            f"need at least {min_windows} healthy windows to compute a standard deviation, got {len(healthy_windows)}"
         )
     spectra = [compute_spectrum(w, sample_rate, window) for w in healthy_windows]
     lengths = {len(s.magnitudes) for s in spectra}
@@ -85,7 +103,7 @@ def fit_baseline(
 
     magnitudes = np.stack([s.magnitudes for s in spectra])  # shape (n_windows, n_bins)
     mean = magnitudes.mean(axis=0)
-    std = np.maximum(magnitudes.std(axis=0), min_std)
+    std = np.maximum(magnitudes.std(axis=0, ddof=ddof), min_std)
     return Baseline(
         freqs=spectra[0].freqs,
         mean=mean,
