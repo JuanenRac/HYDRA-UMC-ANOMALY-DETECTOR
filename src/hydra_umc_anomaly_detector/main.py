@@ -122,7 +122,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--legacy-baseline", action="store_true", help="fit baselines the earlier way: 2 healthy windows are enough and the spread is the population standard deviation (default: at least 10 windows and the sample standard deviation, which gives fewer false alarms)")
     parser.add_argument("--min-windows", type=int, default=None, help="healthy windows a fit needs (default 10, or 2 with --legacy-baseline); can also be set in --detector-config")
     parser.add_argument("--ddof", type=int, choices=(0, 1), default=None, help="1 = sample standard deviation (default), 0 = population one; can also be set in --detector-config")
-    parser.add_argument("--detector-config", default=None, help="JSON file with the tuned values of the detector (threshold, window, minWindows, ddof, sampleRate, legacyBaseline); a flag given on the command line wins over the file")
+    parser.add_argument("--detector-config", default=None, help="JSON file with the tuned values of the detector (threshold, window, minWindows, ddof, sampleRate, legacyBaseline, rul, rulMinPoints); a flag given on the command line wins over the file")
     parser.add_argument("--window", choices=WINDOWS, default="none", help="window applied before the FFT: none (the original behaviour), hann (removes the mean and the leakage of a speed that wanders) or welch (Hann segments averaged in power: steadier magnitudes, half the frequency resolution); recalibrate --threshold with real healthy recordings before trusting hann or welch. A baseline remembers the window it was made with.")
     parser.add_argument("--train-start", type=int, default=None, help="first timestamp (unix ms) of the training history read from DATALAKE")
     parser.add_argument("--train-end", type=int, default=None, help="last timestamp (unix ms) of the training history read from DATALAKE")
@@ -132,6 +132,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--token-file", default=None, help="file with a bearer token demanded by POST /baseline/fit, /drift/init and /drift/observe (or the HYDRA_UMC_ANOMALY_TOKEN environment variable). Needed to bind a non-loopback address.")
     parser.add_argument("--protect-reads", dest="protect_reads", action="store_true", default=None, help="POST /detect demands the token too (only GET /stats stays open). This is the default whenever a token is set; HYDRA_UMC_ANOMALY_PROTECT_READS=1 does the same and, unlike the default, refuses to start without a token")
     parser.add_argument("--no-protect-reads", dest="protect_reads", action="store_false", help="leave POST /detect open even though a token is set (HYDRA_UMC_ANOMALY_PROTECT_READS=0 does the same)")
+    parser.add_argument("--rul", action="store_true", default=False, help="turn on POST /rul, the days until the trend of a list of scores reaches a limit (off by default); can also be set in --detector-config")
+    parser.add_argument("--rul-min-points", type=int, default=8, help="the fewest points POST /rul needs to give an estimate (at least 3); can also be set in --detector-config")
     parser.add_argument("--follow-config", default=None, help="continuous service mode: a JSON file naming the series to read from DATALAKE as they grow, score, write back and raise alarms for (see docs/API.md); every tuned value lives in that file")
     pre, _ = parser.parse_known_args(argv)
     if pre.detector_config:
@@ -139,7 +141,7 @@ def main(argv: list[str] | None = None) -> int:
             raw = json.loads(Path(pre.detector_config).read_text(encoding="utf-8"))
             if not isinstance(raw, dict):
                 raise ValueError("the file must hold a JSON object")
-            names = {"threshold": "threshold", "window": "window", "minWindows": "min_windows", "ddof": "ddof", "sampleRate": "sample_rate", "legacyBaseline": "legacy_baseline"}
+            names = {"threshold": "threshold", "window": "window", "minWindows": "min_windows", "ddof": "ddof", "sampleRate": "sample_rate", "legacyBaseline": "legacy_baseline", "rul": "rul", "rulMinPoints": "rul_min_points"}
             unknown = sorted(set(raw) - set(names))
             if unknown:
                 raise ValueError(f"unknown keys: {', '.join(unknown)}")
@@ -148,6 +150,9 @@ def main(argv: list[str] | None = None) -> int:
             print(f"error: --detector-config: {e}", file=sys.stderr)
             return 2
     args = parser.parse_args(argv)
+    if not isinstance(args.rul, bool) or isinstance(args.rul_min_points, bool) or not isinstance(args.rul_min_points, int) or args.rul_min_points < 3:
+        print("error: rul must be true or false and rul-min-points an integer of at least 3", file=sys.stderr)
+        return 2
     if args.window not in WINDOWS or (args.min_windows is not None and args.min_windows < 2):
         print("error: window must be one of " + ", ".join(WINDOWS) + " and min-windows at least 2", file=sys.stderr)
         return 2
@@ -238,7 +243,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"[anomaly-detector] restored the baseline of {restored} series from {args.baseline_dir}")
     for problem in problems:
         print(f"[anomaly-detector] WARNING: could not restore a series: {problem}", file=sys.stderr)
-    server = DetectorServer((args.addr, args.port), detector, baseline_path, token=token, protect_reads=protect_reads, registry=registry)
+    server = DetectorServer((args.addr, args.port), detector, baseline_path, token=token, protect_reads=protect_reads, registry=registry, rul_enabled=bool(args.rul), rul_min_points=args.rul_min_points)
     follower_stop = None
     if args.follow_config:
         try:

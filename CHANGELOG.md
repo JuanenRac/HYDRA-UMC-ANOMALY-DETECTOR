@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **Remaining useful life (off by default):** `serve --rul` (or `"rul": true` in `--detector-config`; `--rul-min-points` / `rulMinPoints`, 8 by default and at least 3) turns on `POST /rul`. Given `points` (`t` in seconds, `score`) and a `limit`, it fits the trend of the scores with the Theil-Sen method (the median of the slopes between every two points, so a few wild points do not bend it) and answers `status` (`insufficient_data`, `not_rising`, `limit_reached` or `estimated`), the slope per day, the fitted value now and `daysToLimit` with a range (`daysLow`, `daysHigh`, from the 25th and 75th percentile of the slopes). It keeps nothing and changes nothing; it needs the token when reads are protected, and the route answers 404 while the switch is off.
+
 ## [0.1.9] - The tuned values in a file, a baseline of ten healthy windows with the sample spread, the Welch window and the universal README
 
 - **The tuned values of the detector live in a file:** `--detector-config FILE` (JSON with `threshold`, `window`, `minWindows`, `ddof`, `sampleRate`, `legacyBaseline`) sets what the flags set, and a flag given on the command line wins; `--min-windows` and `--ddof` are new flags. An unknown key or an unreadable file stops the start.

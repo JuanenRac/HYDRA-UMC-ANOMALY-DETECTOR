@@ -150,6 +150,10 @@ Records one real score and reports the current real drift state.
 
 ---
 
+## `POST /rul` (off by default: `--rul`)
+
+Days until the trend of a list of scores reaches a limit. Body: `{"points": [{"t": seconds, "score": number}, ...], "limit": number}` (at most 1000 points). The trend is the Theil-Sen line (median of the pairwise slopes), so a few wild points do not move it. Answer: `status` (`insufficient_data` below `--rul-min-points`, default 8; `not_rising`; `limit_reached`; `estimated`), `points`, `slopePerDay`, `currentValue`, `daysToLimit`, and a range `daysLow` (the steepest plausible trend) and `daysHigh` (the gentlest; `null` when that trend does not rise). It is an estimate of a trend, never a promise, and it changes nothing. It needs the token when reads are protected; the route answers 404 while `--rul` (or `"rul": true` in `--detector-config`) is off.
+
 ## Continuous service mode (`--follow-config FILE`)
 
 Without it a verdict exists only when somebody posts a window. With it the detector follows the series named in a JSON file: every

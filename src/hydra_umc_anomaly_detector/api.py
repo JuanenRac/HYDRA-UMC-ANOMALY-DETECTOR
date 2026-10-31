@@ -21,6 +21,7 @@ from .baseline import BaselineError, save_baseline
 from .detector import AnomalyDetector, NotFittedError
 from .drift import DriftMonitor, DriftMonitorError
 from .registry import DetectorRegistry, RegistryError, RegistryFull, parse_key
+from .rul import RulError, estimate_rul
 
 
 MAX_BODY_BYTES = 1024 * 1024
@@ -92,13 +93,15 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:  # noqa: N802
         path = urlparse(self.path).path
-        if (path in _WRITE_ROUTES or (path == "/detect" and self.server.protect_reads)) and not _authorized(self):
+        if (path in _WRITE_ROUTES or (path in ("/detect", "/rul") and self.server.protect_reads)) and not _authorized(self):
             _write_json(self, 401, {"error": "a valid bearer token is required for this operation"})
             return
         if path == "/baseline/fit":
             self._handle_fit()
         elif path == "/detect":
             self._handle_detect()
+        elif path == "/rul" and self.server.rul_enabled:
+            self._handle_rul()
         elif path == "/drift/init":
             self._handle_drift_init()
         elif path == "/drift/observe":
@@ -231,6 +234,21 @@ class Handler(BaseHTTPRequestHandler):
             },
         )
 
+    def _handle_rul(self) -> None:
+        """POST /rul: days until the trend of a list of scores reaches a limit (rul.py); it keeps nothing and changes nothing."""
+        try:
+            body = _read_json_body(self)
+            points = body["points"]
+            if not isinstance(points, list):
+                raise ValueError('"points" must be an array of {"t": seconds, "score": number}')
+            times = [p["t"] for p in points]
+            scores = [p["score"] for p in points]
+            estimate = estimate_rul(times, scores, body["limit"], min_points=self.server.rul_min_points)
+        except (KeyError, ValueError, TypeError, json.JSONDecodeError, RulError) as e:
+            _write_json(self, 400, {"error": f"invalid request: {e}"})
+            return
+        _write_json(self, 200, estimate.as_dict())
+
     def _handle_drift_init(self, ctx: object = None) -> None:
         ctx = self.server if ctx is None else ctx
         try:
@@ -330,8 +348,13 @@ class DetectorServer(ThreadingHTTPServer):
         token: str | None = None,
         protect_reads: bool | None = None,
         registry: DetectorRegistry | None = None,
+        rul_enabled: bool = False,
+        rul_min_points: int = 8,
     ) -> None:
         super().__init__(address, Handler)
+        # POST /rul (rul.py) answers 404 unless this is on; the least points it needs to give an estimate
+        self.rul_enabled = rul_enabled
+        self.rul_min_points = rul_min_points
         # One detector per series (sourceId, kind, field), beside the shared one: see registry.py. Without one, the bound is the default and nothing is saved.
         # Set by the command when the continuous service mode runs: what GET /stats shows of it.
         self.follower_snapshot = None
