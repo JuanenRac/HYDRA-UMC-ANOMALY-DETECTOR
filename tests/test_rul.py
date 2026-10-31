@@ -120,7 +120,7 @@ def test_route_answers_404_while_off() -> None:
     server, thread = _run()
     try:
         t, y = _line(12, 0.1)
-        points = [{"t": a, "score": b} for a, b in zip(t, y)]
+        points = [{"t": a, "score": b} for a, b in zip(t, y, strict=False)]
         status, _ = _post(f"http://127.0.0.1:{server.server_address[1]}/rul", {"points": points, "limit": 5.0})
         assert status == 404
     finally:
@@ -132,7 +132,7 @@ def test_route_estimates_when_on() -> None:
     try:
         url = f"http://127.0.0.1:{server.server_address[1]}/rul"
         t, y = _line(6, 0.1)
-        points = [{"t": a, "score": b} for a, b in zip(t, y)]
+        points = [{"t": a, "score": b} for a, b in zip(t, y, strict=False)]
         status, body = _post(url, {"points": points, "limit": 3.0})
         assert status == 200 and body["status"] == "estimated" and body["daysToLimit"] == pytest.approx(15.0)
         status, body = _post(url, {"points": points[:4], "limit": 3.0})

@@ -93,7 +93,7 @@ class DatalakeClient:
                 if attempt < self.max_attempts:
                     self._sleep(self.retry_delay_seconds)
         raise DatalakeError(
-            f"could not reach DATALAKE at {self.base_url} after {self.max_attempts} attempts: {last_error.reason}"
+            f"could not reach DATALAKE at {self.base_url} after {self.max_attempts} attempts: {last_error.reason if last_error is not None else ''}"
         ) from last_error
 
     def ingest(self, *, source_id: str, kind: str, timestamp: int, fields: dict[str, float]) -> None:
@@ -145,7 +145,7 @@ class DatalakeClient:
                 timestamp=p["timestamp"],
                 value=p["value"],
             )
-            for p in raw
+            for p in raw  # type: ignore[attr-defined]
         ]
 
 

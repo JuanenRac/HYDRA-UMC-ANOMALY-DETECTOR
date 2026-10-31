@@ -25,7 +25,7 @@ import json
 import sys
 import threading
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 
 from .datalake_client import DatalakeClient, DatalakeError, split_runs

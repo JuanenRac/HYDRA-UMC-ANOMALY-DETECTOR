@@ -23,7 +23,7 @@ from hydra_umc_anomaly_detector.datalake_client import DatalakeClient
 from hydra_umc_anomaly_detector.detector import AnomalyDetector
 from hydra_umc_anomaly_detector.follower import FollowConfigError, Follower, parse_follow_config
 from hydra_umc_anomaly_detector.main import main
-from hydra_umc_anomaly_detector.mqtt_publish import MqttPublisher, MqttTarget, connect_packet, encode_length, publish_packet
+from hydra_umc_anomaly_detector.mqtt_publish import MqttError, MqttPublisher, connect_packet, encode_length, publish_packet
 from hydra_umc_anomaly_detector.registry import DetectorRegistry, SeriesKey
 
 RATE = 1000.0
@@ -186,7 +186,7 @@ def test_mqtt_lengths_and_packets_are_encoded_as_the_standard_says():
 
 
 def test_a_topic_with_a_wildcard_is_never_published():
-    with pytest.raises(Exception):
+    with pytest.raises(MqttError):
         publish_packet("a/+/b", b"x")
 
 
@@ -218,7 +218,7 @@ def test_new_points_continue_where_the_last_window_ended():
 
 def test_an_anomalous_window_is_flagged_written_and_announced_over_mqtt():
     with running_fake_datalake() as (url, datalake), broker() as mqtt:
-        values = _sine(50.0, 0, WINDOW) + _sine(50.0, 0, WINDOW) + [a + b for a, b in zip(_sine(50.0, 0, WINDOW), _sine(220.0, 0, WINDOW, 3.0))] + _sine(50.0, 0, WINDOW)
+        values = _sine(50.0, 0, WINDOW) + _sine(50.0, 0, WINDOW) + [a + b for a, b in zip(_sine(50.0, 0, WINDOW), _sine(220.0, 0, WINDOW, 3.0), strict=False)] + _sine(50.0, 0, WINDOW)
         datalake.points = _points(values, 20_000)
         config = _config(url, mqtt={"host": "127.0.0.1", "port": mqtt.port})
         follower = Follower(config, _registry_with_fitted_series(), DatalakeClient(url), sample_rate=RATE, publisher=MqttPublisher(config.mqtt), clock=lambda: 20.0)

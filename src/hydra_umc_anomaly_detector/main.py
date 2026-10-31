@@ -203,7 +203,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"[anomaly-detector] fit {len(windows)} window(s) from DATALAKE ({args.datalake_url})")
         if baseline_path is not None:
             try:
-                save_baseline(baseline_path, detector.baseline, detector.model_version)
+                save_baseline(baseline_path, detector.baseline, detector.model_version)  # type: ignore[arg-type]
             except OSError as e:
                 print(f"error: could not save the baseline to {baseline_path}: {e}", file=sys.stderr)
                 return 1

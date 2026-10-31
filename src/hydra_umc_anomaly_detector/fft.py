@@ -94,7 +94,7 @@ def compute_spectrum(signal: np.ndarray | list[float], sample_rate: float, windo
             spectrum = np.fft.rfft((part - part.mean()) * taper)
             power = np.abs(spectrum) ** 2 if power is None else power + np.abs(spectrum) ** 2
             count_segments += 1
-        magnitudes = np.sqrt(power / count_segments) * (2.0 / taper.sum())
+        magnitudes = np.sqrt(power / count_segments) * (2.0 / taper.sum())  # type: ignore[operator]
         freqs = np.fft.rfftfreq(segment, d=1.0 / sample_rate)
         return Spectrum(freqs=freqs[1:], magnitudes=magnitudes[1:])
     if window == "hann":

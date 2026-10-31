@@ -68,10 +68,10 @@ def precision_recall(predicted_anomalous: list[bool], actually_anomalous: list[b
             f"predicted_anomalous has {len(predicted_anomalous)} entries, "
             f"actually_anomalous has {len(actually_anomalous)} - they must label the same real samples"
         )
-    true_positives = sum(1 for p, a in zip(predicted_anomalous, actually_anomalous) if p and a)
-    false_positives = sum(1 for p, a in zip(predicted_anomalous, actually_anomalous) if p and not a)
-    false_negatives = sum(1 for p, a in zip(predicted_anomalous, actually_anomalous) if not p and a)
-    true_negatives = sum(1 for p, a in zip(predicted_anomalous, actually_anomalous) if not p and not a)
+    true_positives = sum(1 for p, a in zip(predicted_anomalous, actually_anomalous, strict=False) if p and a)
+    false_positives = sum(1 for p, a in zip(predicted_anomalous, actually_anomalous, strict=False) if p and not a)
+    false_negatives = sum(1 for p, a in zip(predicted_anomalous, actually_anomalous, strict=False) if not p and a)
+    true_negatives = sum(1 for p, a in zip(predicted_anomalous, actually_anomalous, strict=False) if not p and not a)
     return PrecisionRecall(
         true_positives=true_positives,
         false_positives=false_positives,

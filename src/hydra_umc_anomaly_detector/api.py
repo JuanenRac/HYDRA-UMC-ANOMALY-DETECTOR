@@ -13,8 +13,10 @@ from __future__ import annotations
 import hmac
 import json
 import threading
+from collections.abc import Callable
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from typing import Any
 from urllib.parse import unquote, urlparse
 
 from .baseline import BaselineError, save_baseline
@@ -55,7 +57,7 @@ def _reject_json_constant(name: str) -> float:
     raise ValueError(f"{name} is not a valid JSON number")
 
 
-def _authorized(handler: BaseHTTPRequestHandler) -> bool:
+def _authorized(handler: Handler) -> bool:
     """Operations that change the model or the drift monitor need the bearer token when the server has one."""
     expected = handler.server.token
     if not expected:
@@ -149,7 +151,7 @@ class Handler(BaseHTTPRequestHandler):
         else:
             self._handle_drift_observe(entry)
 
-    def _handle_fit(self, ctx: object = None, registry_key: object = None) -> None:
+    def _handle_fit(self, ctx: Any = None, registry_key: Any = None) -> None:
         ctx = self.server if ctx is None else ctx
         try:
             body = _read_json_body(self)
@@ -197,7 +199,7 @@ class Handler(BaseHTTPRequestHandler):
             return
         _write_json(self, 200, {"status": "fitted", "windowCount": len(windows)})
 
-    def _handle_detect(self, ctx: object = None) -> None:
+    def _handle_detect(self, ctx: Any = None) -> None:
         ctx = self.server if ctx is None else ctx
         try:
             body = _read_json_body(self)
@@ -249,14 +251,14 @@ class Handler(BaseHTTPRequestHandler):
             return
         _write_json(self, 200, estimate.as_dict())
 
-    def _handle_drift_init(self, ctx: object = None) -> None:
+    def _handle_drift_init(self, ctx: Any = None) -> None:
         ctx = self.server if ctx is None else ctx
         try:
             body = _read_json_body(self)
             baseline_scores = body["baselineScores"]
             if not isinstance(baseline_scores, list) or not baseline_scores:
                 raise ValueError("\"baselineScores\" must be a non-empty array of numbers")
-            kwargs = {}
+            kwargs: dict[str, Any] = {}
             if "windowSize" in body:
                 kwargs["window_size"] = int(body["windowSize"])
             if "driftRatioThreshold" in body:
@@ -271,7 +273,7 @@ class Handler(BaseHTTPRequestHandler):
             ctx.drift_model_version = ctx.detector.model_version
         _write_json(self, 200, {"status": "initialized", "baselineMeanScore": monitor.baseline_mean_score})
 
-    def _handle_drift_observe(self, ctx: object = None) -> None:
+    def _handle_drift_observe(self, ctx: Any = None) -> None:
         ctx = self.server if ctx is None else ctx
         try:
             body = _read_json_body(self)
@@ -357,7 +359,7 @@ class DetectorServer(ThreadingHTTPServer):
         self.rul_min_points = rul_min_points
         # One detector per series (sourceId, kind, field), beside the shared one: see registry.py. Without one, the bound is the default and nothing is saved.
         # Set by the command when the continuous service mode runs: what GET /stats shows of it.
-        self.follower_snapshot = None
+        self.follower_snapshot: Callable[[], dict[str, object]] | None = None
         self.registry = registry if registry is not None else DetectorRegistry(lambda: AnomalyDetector(sample_rate=detector.sample_rate, threshold=detector.threshold, window=detector.window, legacy_baseline=detector.legacy_baseline, min_windows=detector.min_windows, ddof=detector.ddof))
         # With protect_reads (and a token), POST /detect demands the token too; only GET /stats (the health path) stays open.
         # None (the default) means protected whenever a token is set: there is nothing to demand without one.
