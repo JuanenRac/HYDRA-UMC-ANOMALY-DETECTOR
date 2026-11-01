@@ -19,6 +19,8 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import unquote, urlparse
 
+from . import __version__
+from .service_metrics import MetricsHandlerMixin
 from .baseline import BaselineError, save_baseline
 from .detector import AnomalyDetector, NotFittedError
 from .drift import DriftMonitor, DriftMonitorError
@@ -81,8 +83,10 @@ def _write_json(handler: BaseHTTPRequestHandler, status: int, payload: object) -
     handler.wfile.write(body)
 
 
-class Handler(BaseHTTPRequestHandler):
+class Handler(MetricsHandlerMixin, BaseHTTPRequestHandler):
     server: "DetectorServer"
+    metrics_service = "hydra-umc-anomaly-detector"
+    metrics_version = __version__
 
     # Seconds a client may stay silent on its connection before the server
     # drops it: with no limit, a client that opens a connection and sends
@@ -318,6 +322,8 @@ class Handler(BaseHTTPRequestHandler):
         )
 
     def do_GET(self) -> None:  # noqa: N802
+        if self.serve_metrics(authorized=(not self.server.protect_reads) or _authorized(self)):
+            return
         path = urlparse(self.path).path
         if path == "/stats":
             with self.server.lock:

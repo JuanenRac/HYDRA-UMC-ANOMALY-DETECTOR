@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **`GET /metrics` in the text format of Prometheus:** the version, the uptime, the responses by class of status (2xx to 5xx) and the health, the aggregate of the checks of the service; only numbers about the service, never a path, an address, a token or a body. Behind the bearer token when the service protects its reads. The code is the canonical `service_metrics.py` of HYDRA-UMC-SDK, copied byte for byte. 4 tests against a real server.
+
 ## [0.2.0] - Remaining useful life, off by default
 
 - **Remaining useful life (off by default):** `serve --rul` (or `"rul": true` in `--detector-config`; `--rul-min-points` / `rulMinPoints`, 8 by default and at least 3) turns on `POST /rul`. Given `points` (`t` in seconds, `score`) and a `limit`, it fits the trend of the scores with the Theil-Sen method (the median of the slopes between every two points, so a few wild points do not bend it) and answers `status` (`insufficient_data`, `not_rising`, `limit_reached` or `estimated`), the slope per day, the fitted value now and `daysToLimit` with a range (`daysLow`, `daysHigh`, from the 25th and 75th percentile of the slopes). It keeps nothing and changes nothing; it needs the token when reads are protected, and the route answers 404 while the switch is off.
