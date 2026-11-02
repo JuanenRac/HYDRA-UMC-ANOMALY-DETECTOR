@@ -167,6 +167,30 @@ Records one real score and reports the current real drift state.
 
 Days until the trend of a list of scores reaches a limit. Body: `{"points": [{"t": seconds, "score": number}, ...], "limit": number}` (at most 1000 points). The trend is the Theil-Sen line (median of the pairwise slopes), so a few wild points do not move it. Answer: `status` (`insufficient_data` below `--rul-min-points` (or `rulMinPoints` of `--detector-config`; default 8, at least 3, and `"rul": true` there turns the route on like `--rul`); `not_rising`; `limit_reached`; `estimated`), `points`, `slopePerDay`, `currentValue`, `daysToLimit`, and a range `daysLow` (the steepest plausible trend) and `daysHigh` (the gentlest; `null` when that trend does not rise). It is an estimate of a trend, never a promise, and it changes nothing. It needs the token when reads are protected; the route answers 404 while `--rul` (or `"rul": true` in `--detector-config`) is off.
 
+## `POST /diagnose` and order tracking (off by default: `diagnosis` and `orderTracking` of `--detector-config`)
+
+Says which characteristic frequency of a described machine a window has a peak at, so a verdict can read "possible outer-race defect of bearing X" instead of "bin 137 Hz". The machines live in the configuration file, never in the code:
+
+```json
+{
+  "diagnosis": {
+    "enabled": true, "tolerancePct": 2.0, "harmonics": 3, "peakRatio": 5.0, "minRpm": 30,
+    "machines": {
+      "spindle": {
+        "bearings": [{"name": "drive end", "balls": 9, "ballDiameter": 7.94, "pitchDiameter": 39.04, "contactAngleDeg": 0}],
+        "belt": {"pulleyDiameter": 60, "length": 900},
+        "gears": {"teeth": [17], "shaftRatio": 1.0}
+      }
+    }
+  },
+  "orderTracking": {"enabled": false, "samplesPerRev": 64, "revolutions": 0, "minRpm": 30}
+}
+```
+
+The lines, as multiples of the shaft speed: the shaft itself (1x, imbalance or misalignment), for each bearing BPFO `n/2 (1 - d/D cos a)`, BPFI `n/2 (1 + d/D cos a)`, BSF `D/(2d) (1 - (d/D cos a)^2)` and the cage FTF `1/2 (1 - d/D cos a)`, the belt `pi * pulley diameter / belt length`, and each gear mesh (its teeth). Body: `{"window": [...], "rpm": number, "machine": "spindle", "lang": "en", "spectrumWindow": "hann"}`. A line is a finding when a peak at least `peakRatio` times the median of the spectrum lies within `tolerancePct` of it or of one of its first `harmonics` harmonics; a peak counts for the nearest place only. Answer: `machine`, `rpm`, `axis` (`hz` or `orders`), `findings` (each with `code`, `name`, `order`, `expectedHz`, `confidence` (`high` with two or more harmonics, `low` with one), `strength`, `hits` and a `message` in `lang`: en, es, de, fr, it, ja, zh or pt) and a `summary`. It is a hint for a person: other causes put peaks in the same places.
+
+With `orderTracking.enabled` and `rpm` as a list with one speed per sample (from a tachometer, an encoder or the drive), the window is first re-sampled by angle (`samplesPerRev` samples per revolution, every complete revolution of the window or exactly `revolutions`), so a speed that changes does not smear the peaks and the lines are looked for in orders. The re-sampling is a linear interpolation without a low-pass filter: keep `samplesPerRev` at twice the highest order of interest and below the samples per revolution the sampling gives at the top speed. The same re-sampling feeds a detector whose `sample_rate` is `samplesPerRev` (a baseline in orders, as the tests do); wiring that into `/detect` and the follower is not done yet. The route answers 404 while `diagnosis.enabled` is off, needs the token when reads are protected, keeps nothing and changes nothing. Checked with synthetic signals only; thresholds and tolerances have to be tuned with real recordings of the machine.
+
 ## Continuous service mode (`--follow-config FILE`)
 
 Without it a verdict exists only when somebody posts a window. With it the detector follows the series named in a JSON file: every

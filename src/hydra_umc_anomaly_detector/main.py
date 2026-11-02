@@ -35,6 +35,8 @@ from .follower import Follower, FollowConfigError, load_follow_config
 from .mqtt_publish import MqttPublisher
 from .fft import WINDOWS
 from .detector import SCORINGS, AnomalyDetector
+from .machine import MachineError, parse_diagnosis_settings
+from .orders import OrderError, parse_order_settings
 from .robust import RobustError, parse_robust_settings
 from .registry import DEFAULT_MAX_DETECTORS, DetectorRegistry
 
@@ -124,10 +126,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--legacy-baseline", action="store_true", help="fit baselines the earlier way: 2 healthy windows are enough and the spread is the population standard deviation (default: at least 10 windows and the sample standard deviation, which gives fewer false alarms)")
     parser.add_argument("--min-windows", type=int, default=None, help="healthy windows a fit needs (default 10, or 2 with --legacy-baseline); can also be set in --detector-config")
     parser.add_argument("--ddof", type=int, choices=(0, 1), default=None, help="1 = sample standard deviation (default), 0 = population one; can also be set in --detector-config")
-    parser.add_argument("--detector-config", default=None, help="JSON file with the tuned values of the detector (threshold, window, minWindows, ddof, sampleRate, legacyBaseline, rul, rulMinPoints); a flag given on the command line wins over the file")
+    parser.add_argument("--detector-config", default=None, help="JSON file with the tuned values of the detector (threshold, window, minWindows, ddof, sampleRate, legacyBaseline, rul, rulMinPoints, scoring, robust, diagnosis, orderTracking); a flag given on the command line wins over the file")
     parser.add_argument("--window", choices=WINDOWS, default="none", help="window applied before the FFT: none (the original behaviour), hann (removes the mean and the leakage of a speed that wanders) or welch (Hann segments averaged in power: steadier magnitudes, half the frequency resolution); recalibrate --threshold with real healthy recordings before trusting hann or welch. A baseline remembers the window it was made with.")
-    # the robust scoring (robust.py) is chosen and tuned in --detector-config ("scoring": "robust", "robust": {...}); it has no flags of its own
-    parser.set_defaults(scoring="zscore", robust=None)
+    # the robust scoring (robust.py), the diagnosis by characteristic frequencies (machine.py) and order tracking (orders.py) are chosen and tuned in --detector-config
+    # ("scoring": "robust", "robust": {...}, "diagnosis": {...}, "orderTracking": {...}); they have no flags of their own
+    parser.set_defaults(scoring="zscore", robust=None, diagnosis=None, order_tracking=None)
     parser.add_argument("--train-start", type=int, default=None, help="first timestamp (unix ms) of the training history read from DATALAKE")
     parser.add_argument("--train-end", type=int, default=None, help="last timestamp (unix ms) of the training history read from DATALAKE")
     parser.add_argument("--max-train-points", type=int, default=200_000, help="most points read from DATALAKE for training (the read is paged, oldest first; reaching this is reported)")
@@ -145,7 +148,7 @@ def main(argv: list[str] | None = None) -> int:
             raw = json.loads(Path(pre.detector_config).read_text(encoding="utf-8"))
             if not isinstance(raw, dict):
                 raise ValueError("the file must hold a JSON object")
-            names = {"threshold": "threshold", "window": "window", "minWindows": "min_windows", "ddof": "ddof", "sampleRate": "sample_rate", "legacyBaseline": "legacy_baseline", "rul": "rul", "rulMinPoints": "rul_min_points", "scoring": "scoring", "robust": "robust"}
+            names = {"threshold": "threshold", "window": "window", "minWindows": "min_windows", "ddof": "ddof", "sampleRate": "sample_rate", "legacyBaseline": "legacy_baseline", "rul": "rul", "rulMinPoints": "rul_min_points", "scoring": "scoring", "robust": "robust", "diagnosis": "diagnosis", "orderTracking": "order_tracking"}
             unknown = sorted(set(raw) - set(names))
             if unknown:
                 raise ValueError(f"unknown keys: {', '.join(unknown)}")
@@ -163,6 +166,12 @@ def main(argv: list[str] | None = None) -> int:
     try:
         robust_settings = parse_robust_settings(args.robust if args.robust is not None else {})
     except RobustError as e:
+        print(f"error: --detector-config: {e}", file=sys.stderr)
+        return 2
+    try:
+        diagnosis_settings = parse_diagnosis_settings(args.diagnosis)
+        order_settings = parse_order_settings(args.order_tracking)
+    except (MachineError, OrderError) as e:
         print(f"error: --detector-config: {e}", file=sys.stderr)
         return 2
     if args.window not in WINDOWS or (args.min_windows is not None and args.min_windows < 2):
@@ -255,7 +264,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"[anomaly-detector] restored the baseline of {restored} series from {args.baseline_dir}")
     for problem in problems:
         print(f"[anomaly-detector] WARNING: could not restore a series: {problem}", file=sys.stderr)
-    server = DetectorServer((args.addr, args.port), detector, baseline_path, token=token, protect_reads=protect_reads, registry=registry, rul_enabled=bool(args.rul), rul_min_points=args.rul_min_points)
+    server = DetectorServer((args.addr, args.port), detector, baseline_path, token=token, protect_reads=protect_reads, registry=registry, rul_enabled=bool(args.rul), rul_min_points=args.rul_min_points, diagnosis=diagnosis_settings, order_tracking=order_settings)
     follower_stop = None
     if args.follow_config:
         try:

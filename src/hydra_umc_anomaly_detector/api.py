@@ -25,6 +25,9 @@ from .baseline import BaselineError, save_baseline
 from .detector import AnomalyDetector, NotFittedError
 from .drift import DriftMonitor, DriftMonitorError
 from .registry import DetectorRegistry, RegistryError, RegistryFull, parse_key
+from .fft import compute_spectrum
+from .machine import LANGUAGES, DiagnosisSettings, MachineError, diagnose
+from .orders import OrderError, OrderSettings, order_spectrum
 from .rul import RulError, estimate_rul
 
 
@@ -99,7 +102,7 @@ class Handler(MetricsHandlerMixin, BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:  # noqa: N802
         path = urlparse(self.path).path
-        if (path in _WRITE_ROUTES or (path in ("/detect", "/rul") and self.server.protect_reads)) and not _authorized(self):
+        if (path in _WRITE_ROUTES or (path in ("/detect", "/rul", "/diagnose") and self.server.protect_reads)) and not _authorized(self):
             _write_json(self, 401, {"error": "a valid bearer token is required for this operation"})
             return
         if path == "/baseline/fit":
@@ -108,6 +111,8 @@ class Handler(MetricsHandlerMixin, BaseHTTPRequestHandler):
             self._handle_detect()
         elif path == "/rul" and self.server.rul_enabled:
             self._handle_rul()
+        elif path == "/diagnose" and self.server.diagnosis.enabled:
+            self._handle_diagnose()
         elif path == "/drift/init":
             self._handle_drift_init()
         elif path == "/drift/observe":
@@ -255,6 +260,41 @@ class Handler(MetricsHandlerMixin, BaseHTTPRequestHandler):
             return
         _write_json(self, 200, estimate.as_dict())
 
+    def _handle_diagnose(self) -> None:
+        """POST /diagnose: which characteristic frequency of a described machine a window has a peak at (machine.py); it keeps nothing and changes nothing."""
+        settings = self.server.diagnosis
+        try:
+            body = _read_json_body(self)
+            window = body["window"]
+            if not isinstance(window, list) or not window:
+                raise ValueError('"window" must be a non-empty array')
+            name = body["machine"]
+            machine = settings.machines.get(name) if isinstance(name, str) else None
+            if machine is None:
+                raise ValueError('"machine" must be one of: ' + ", ".join(sorted(settings.machines)))
+            lang = body.get("lang", "en")
+            if lang not in LANGUAGES:
+                raise ValueError('"lang" must be one of: ' + ", ".join(LANGUAGES))
+            rpm = body["rpm"]
+            spectrum_window = body.get("spectrumWindow", "hann")
+            if spectrum_window not in ("none", "hann", "welch"):
+                raise ValueError('"spectrumWindow" must be none, hann or welch')
+            sample_rate = self.server.detector.sample_rate
+            if isinstance(rpm, list):
+                # a speed per sample: the window is re-sampled by angle first, and the peaks are looked for in orders
+                if not self.server.order_tracking.enabled:
+                    raise ValueError("a speed per sample needs orderTracking.enabled in the detector configuration")
+                spectrum = order_spectrum(window, sample_rate, rpm, self.server.order_tracking, spectrum_window)
+                mean_rpm = sum(float(r) for r in rpm) / len(rpm)
+                result = diagnose(spectrum, mean_rpm, machine, settings, lang, order_axis=True)
+            else:
+                spectrum = compute_spectrum(window, sample_rate, spectrum_window)
+                result = diagnose(spectrum, rpm, machine, settings, lang)
+        except (KeyError, ValueError, TypeError, OverflowError, json.JSONDecodeError, MachineError, OrderError) as e:
+            _write_json(self, 400, {"error": f"invalid request: {e}"})
+            return
+        _write_json(self, 200, result)
+
     def _handle_drift_init(self, ctx: Any = None) -> None:
         ctx = self.server if ctx is None else ctx
         try:
@@ -366,8 +406,13 @@ class DetectorServer(ThreadingHTTPServer):
         registry: DetectorRegistry | None = None,
         rul_enabled: bool = False,
         rul_min_points: int = 8,
+        diagnosis: DiagnosisSettings | None = None,
+        order_tracking: OrderSettings | None = None,
     ) -> None:
         super().__init__(address, Handler)
+        # POST /diagnose (machine.py) answers 404 unless diagnosis.enabled; order tracking (orders.py) only matters to it
+        self.diagnosis = diagnosis if diagnosis is not None else DiagnosisSettings()
+        self.order_tracking = order_tracking if order_tracking is not None else OrderSettings()
         # POST /rul (rul.py) answers 404 unless this is on; the least points it needs to give an estimate
         self.rul_enabled = rul_enabled
         self.rul_min_points = rul_min_points
