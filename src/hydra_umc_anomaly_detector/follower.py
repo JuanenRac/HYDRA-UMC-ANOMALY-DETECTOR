@@ -29,6 +29,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .datalake_client import DatalakeClient, DatalakeError, split_runs
+from .fleet import FleetConfig, FleetConfigError, FleetTracker, MaintenanceConfig, parse_fleet_config, parse_maintenance_config
 from .mqtt_publish import MqttError, MqttPublisher, MqttTarget
 from .registry import DetectorRegistry, RegistryError, SeriesKey, parse_key
 
@@ -59,6 +60,8 @@ class FollowConfig:
     gap_tolerance: float = 0.5
     mqtt: MqttTarget | None = None
     topic_prefix: str = DEFAULT_TOPIC_PREFIX
+    fleet: FleetConfig = FleetConfig()
+    maintenance: MaintenanceConfig = MaintenanceConfig()
 
 
 def _is_loopback(host: str) -> bool:
@@ -144,6 +147,13 @@ def parse_follow_config(raw: object) -> FollowConfig:
             ca_file=mqtt_raw.get("caFile") if isinstance(mqtt_raw.get("caFile"), str) else None,
             timeout_s=float(_number(mqtt_raw, "timeoutSeconds", 5.0, 0.5, 60.0)),
         )
+    try:
+        fleet = parse_fleet_config(raw.get("fleet"))
+        maintenance = parse_maintenance_config(raw.get("maintenance"), read_secret=_read_secret)
+    except FleetConfigError as error:
+        raise FollowConfigError(str(error)) from error
+    if maintenance.mode != "off" and not fleet.enabled:
+        raise FollowConfigError("maintenance.mode needs fleet.enabled: the proposal is made from the drift that the fleet view measures")
     return FollowConfig(
         datalake_url=datalake["url"],
         series=tuple(series),
@@ -155,6 +165,8 @@ def parse_follow_config(raw: object) -> FollowConfig:
         gap_tolerance=float(_number(raw, "gapTolerance", 0.5, 0.0, 0.99)),
         mqtt=mqtt_target,
         topic_prefix=topic_prefix,
+        fleet=fleet,
+        maintenance=maintenance,
     )
 
 
@@ -197,6 +209,7 @@ class Follower:
         *,
         sample_rate: float,
         publisher: MqttPublisher | None = None,
+        fleet: FleetTracker | None = None,
         clock=time.time,
         log=None,
     ) -> None:
@@ -205,6 +218,7 @@ class Follower:
         self.client = client
         self.sample_rate = sample_rate
         self.publisher = publisher
+        self.fleet = fleet
         self._clock = clock
         self._log = log or (lambda text: print(f"[anomaly-detector] {text}", file=sys.stderr))
         self.state: dict[SeriesKey, SeriesState] = {s.key: SeriesState() for s in config.series}
@@ -226,6 +240,12 @@ class Follower:
                     for key, st in self.state.items()
                 ],
             }
+
+    def fleet_snapshot(self) -> dict[str, object]:
+        """What GET /fleet shows: the last score and the drift of every followed series (empty without a tracker)."""
+        if self.fleet is None:
+            return {"series": []}
+        return self.fleet.snapshot([s.key for s in self.config.series])
 
     def _warn_once(self, key: SeriesKey, what: str, text: str) -> None:
         if (key, what) not in self._warned:
@@ -304,6 +324,8 @@ class Follower:
             changed = st.anomalous is not None and st.anomalous != verdict.anomalous
             first = st.anomalous is None
             st.anomalous = verdict.anomalous
+        if self.fleet is not None:
+            self.fleet.observe(key, verdict.score, timestamp, verdict.anomalous, verdict.threshold)
         if self.config.write_scores:
             fields = {key.field: verdict.score, f"{key.field}_anomalous": 1.0 if verdict.anomalous else 0.0, f"{key.field}_model": float(verdict.model_version)}
             try:

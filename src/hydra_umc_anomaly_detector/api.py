@@ -334,6 +334,12 @@ class Handler(MetricsHandlerMixin, BaseHTTPRequestHandler):
             if self.server.follower_snapshot is not None:
                 stats["follower"] = self.server.follower_snapshot()
             _write_json(self, 200, stats)
+        elif path == "/fleet" and self.server.fleet_snapshot is not None:
+            # the last score and the drift of every followed series (only with fleet.enabled in the follow configuration)
+            if self.server.protect_reads and not _authorized(self):
+                _write_json(self, 401, {"error": "a valid bearer token is required for this operation"})
+                return
+            _write_json(self, 200, self.server.fleet_snapshot())
         elif path == "/detectors":
             # which series have a baseline: what a client needs before it scores one (the same openness as /detect)
             if self.server.protect_reads and not _authorized(self):
@@ -368,6 +374,8 @@ class DetectorServer(ThreadingHTTPServer):
         # One detector per series (sourceId, kind, field), beside the shared one: see registry.py. Without one, the bound is the default and nothing is saved.
         # Set by the command when the continuous service mode runs: what GET /stats shows of it.
         self.follower_snapshot: Callable[[], dict[str, object]] | None = None
+        # Set when the follow configuration turns the fleet view on: GET /fleet answers 404 while it is None.
+        self.fleet_snapshot: Callable[[], dict[str, object]] | None = None
         self.registry = registry if registry is not None else DetectorRegistry(lambda: AnomalyDetector(sample_rate=detector.sample_rate, threshold=detector.threshold, window=detector.window, legacy_baseline=detector.legacy_baseline, min_windows=detector.min_windows, ddof=detector.ddof, scoring=detector.scoring, robust=detector.robust))
         # With protect_reads (and a token), POST /detect demands the token too; only GET /stats (the health path) stays open.
         # None (the default) means protected whenever a token is set: there is nothing to demand without one.

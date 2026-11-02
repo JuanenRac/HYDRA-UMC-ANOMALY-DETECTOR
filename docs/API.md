@@ -204,6 +204,34 @@ Only `datalake.url` and `series` are required. The DATALAKE tokens come from the
 * **`GET /stats`** gains a `follower` object: passes, windows scored, anomalies, DATALAKE / write / MQTT errors, and per series the last score,
   state and note. A DATALAKE or broker that cannot be reached is counted and tried again at the next pass.
 
+## Fleet view and maintenance proposals (`fleet` and `maintenance` of the follow configuration)
+
+Both are **off** unless the follow configuration says otherwise, and neither can stop, start or change a machine.
+
+```json
+{
+  "fleet": {"enabled": true, "driftWindow": 20, "referenceWindows": 10, "driftRatio": 2.0},
+  "maintenance": {"mode": "propose", "url": "http://127.0.0.1:8090", "tokenFile": "/etc/hydra-umc/dispatcher.token", "allowPlaintext": false,
+                  "sustainedWindows": 12, "sustainedSeconds": 600, "resendSeconds": 21600, "timeoutSeconds": 5}
+}
+```
+
+* **`GET /fleet`** (answers `404` while `fleet.enabled` is not `true`; it needs the token when reads are protected, like `GET /detectors`): one row per
+  followed series with `lastScore`, `lastTimestamp`, `anomalous`, `threshold`, `windowsScored`, `driftRatio` (the mean of the newest `driftWindow` scores
+  over the reference), `drifted` (the ratio is at or above `driftRatio`), `driftSustained`, `driftSince`, `proposalsSent` and `proposalNote`. The answer also
+  carries `driftRatioLimit`, `driftWindow` and `maintenanceMode`. A series with no window scored yet has `null` where nothing was measured; no drift is
+  reported before the reference and the rolling window are complete.
+* **The reference** is the baseline mean score of the drift monitor of the series when one was started with `/detectors/.../drift/init`; otherwise it is the
+  mean of the first `referenceWindows` scores the follower saw, which are taken as healthy (say so in the documentation of the installation, and start the
+  follower on a healthy machine).
+* **`maintenance.mode`** is `off` (default) or `propose`; there is no third value on purpose. With `propose`, a series that stays drifted for
+  `sustainedWindows` evaluations in a row and for at least `sustainedSeconds` (by the timestamps of the samples) makes the detector send one
+  `POST /maintenance/proposals` to HYDRA-UMC-JOB-DISPATCHER with the source, a reason, the latest score and the drift. The dispatcher keeps it as a proposal
+  that a person approves or rejects; nothing reaches its queue before that. While the drift lasts it is sent again after `resendSeconds` (the dispatcher
+  merges it into the open one); when the drift ends the series is ready to propose again. A dispatcher that cannot be reached or refuses is shown in
+  `proposalNote` and tried again with the next window. It needs `fleet.enabled`. A dispatcher that is not on this machine needs `https`, or
+  `allowPlaintext` to say on purpose that plain text is fine; the token is read from `tokenFile`.
+
 ---
 
 ## Errors

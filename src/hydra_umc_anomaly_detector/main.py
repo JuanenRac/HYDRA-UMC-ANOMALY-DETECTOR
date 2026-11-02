@@ -30,6 +30,7 @@ from . import __version__
 from .api import DetectorServer
 from .baseline import BaselineError, load_baseline, save_baseline
 from .datalake_client import DatalakeClient, DatalakeError, fetch_windows_checked
+from .fleet import FleetTracker
 from .follower import Follower, FollowConfigError, load_follow_config
 from .mqtt_publish import MqttPublisher
 from .fft import WINDOWS
@@ -265,8 +266,20 @@ def main(argv: list[str] | None = None) -> int:
             server.server_close()
             return 2
         publisher = MqttPublisher(follow_config.mqtt) if follow_config.mqtt is not None else None
-        follower = Follower(follow_config, registry, client, sample_rate=args.sample_rate, publisher=publisher)
+        tracker = None
+        if follow_config.fleet.enabled:
+            def reference_for(key):
+                entry = registry.get(key)
+                monitor = entry.drift_monitor if entry is not None else None
+                return monitor.baseline_mean_score if monitor is not None else None
+            tracker = FleetTracker(follow_config.fleet, follow_config.maintenance, reference_for=reference_for,
+                                   log=lambda text: print(f"[anomaly-detector] {text}", file=sys.stderr))
+        follower = Follower(follow_config, registry, client, sample_rate=args.sample_rate, publisher=publisher, fleet=tracker)
         server.follower_snapshot = follower.snapshot
+        if tracker is not None:
+            server.fleet_snapshot = follower.fleet_snapshot
+            print(f"[anomaly-detector] fleet view is on (GET /fleet); maintenance: {follow_config.maintenance.mode}"
+                  + (" (only PROPOSES to the dispatcher; a person decides)" if follow_config.maintenance.mode == "propose" else ""))
         _, follower_stop = follower.start()
         print(f"[anomaly-detector] following {len(follow_config.series)} series from {follow_config.datalake_url} every {follow_config.interval_s:g} s"
               f" (verdicts {'written back as ' + follow_config.score_kind if follow_config.write_scores else 'not written back'}, alarms {'over MQTT' if publisher else 'not published'})")
