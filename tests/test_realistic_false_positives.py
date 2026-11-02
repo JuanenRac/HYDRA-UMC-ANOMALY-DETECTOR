@@ -9,7 +9,7 @@ The measured picture (kept here so it is not rediscovered): with a few hundred t
 and the default threshold of 10 never fires; with only 20 training windows and a machine that varies a lot, the per-bin standard
 deviation is badly estimated and 1 to 12 healthy windows in a hundred are called anomalous, with or without a Hann window. A fault of
 the size used here scores above 100 in every case, so the detector separates them; what is missing is a threshold that follows the
-variation of the machine (the design change that is pending a decision). The last test states the aim and is expected to fail until then.
+variation of the machine (the robust scoring, test_robust_scoring.py). The last test states the aim and is expected to fail for the z-score.
 """
 from __future__ import annotations
 
@@ -55,7 +55,7 @@ def test_few_training_windows_on_a_varying_machine_do_raise_false_alarms_today()
     assert (_scores(machine, detector, 1500) > detector.threshold).mean() > 0.01
 
 
-@pytest.mark.xfail(reason="the threshold does not follow the variation of the machine yet (statistical redesign pending a decision)", strict=False)
+@pytest.mark.xfail(reason="the threshold of the z-score does not follow the variation of the machine; the robust scoring (test_robust_scoring.py) does", strict=False)
 def test_the_aim_even_20_training_windows_keep_false_alarms_under_a_tenth_of_a_percent():
     machine = Machine(13, speed_jitter=0.05, load_variation=0.4, noise=0.3)
     detector = AnomalyDetector(RATE, threshold=10.0)

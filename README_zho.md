@@ -18,7 +18,7 @@ GPL-3.0-or-later - see LICENSE
   <img src="https://img.shields.io/badge/License-GPL%203.0--or--later-blue.svg" alt="GPL 3.0 or later">
   <img src="https://img.shields.io/badge/Tech-Python%20%2F%20NumPy-blueviolet.svg" alt="Tech">
   <img src="https://img.shields.io/badge/Method-FFT%20%2F%20Spectrogram-orange.svg" alt="Method">
-  <img src="https://img.shields.io/badge/Tests-179%20passing-2ea44f.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-215%20passing-2ea44f.svg" alt="Tests">
   <img src="https://img.shields.io/badge/Version-0.2.0-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-functional-0F6CBD.svg" alt="Maturity">
 </p>
@@ -37,7 +37,7 @@ GPL-3.0-or-later - see LICENSE
 |---|---|
 | 版本 | `0.2.0` |
 | 成熟度 | 可用 |
-| 测试 | 179 (`python -m pytest -q tests`) |
+| 测试 | 215 (`python -m pytest -q tests`) |
 | 技术栈 | Python / FFT / statistical baseline detection |
 | 目标 | HYDRA-UMC 工作单元的 Raspberry Pi CM5 |
 | 真实硬件 | 不适用：这里的内容不在硬件上运行 |
@@ -53,7 +53,7 @@ GPL-3.0-or-later - see LICENSE
 | 领域 | 状态 | 在这里的含义 |
 |---|---|---|
 | 软件 | 🟡 | 主要用途可用；上面的诚实性检查列出了仍然缺少的内容 |
-| 测试 | 🟢 | 179 项自动测试，每次变更都会运行 |
+| 测试 | 🟢 | 215 项自动测试，每次变更都会运行 |
 | 真实硬件 | 🟢 | 不适用：这里的内容不在硬件上运行 |
 | 接口与协议 | 🟡 | 提供的路由或消息已有文档，并用客户端测试过；尚未被所有客户端使用 |
 | 集成 | 🟡 | 在 CM5 测试台上与其他服务一起运行，其消息遵循 SDK 的共享契约 |
@@ -113,6 +113,7 @@ flowchart TB
 * 🚨 **早期预警系统：** 直接在 Studio 和 Watch 界面显示告警——仍属愿景;目前该检测器通过自身的 HTTP API 暴露判定结果,在持续模式下还会作为 DATALAKE 中的 `anomaly_score` 样本和 MQTT 消息发布。DASHBOARD-AI 通过 HYDRA-UMC-SERVER 读取它(同源,因此不需要 CORS);Studio 和 Watch 界面还不显示它的告警。
 * **持续服务模式(`--follow-config 文件`)。** 随着序列增长,从 DATALAKE 读取每个已配置的序列,在采样不规则之处把它切开,用该序列的检测器给每个完整窗口打分,把判定作为类型为 `anomaly_score` 的样本写回,并且在配置了 `mqtt` 时,在序列状态改变时发布保留的状态消息,对每个异常窗口发布一条告警。所有可调的内容(序列、窗口大小、间隔、主题、代理)都在 JSON 文件里;停机的 DATALAKE 或代理会在 `GET /stats` 中计数,但绝不会让循环停下。*(已实现;已对真实的 HTTP DATALAKE 替身和真实的 TCP 代理替身测试,从未对真实服务运行)*
 * 🧬 **基线学习：** 根据数据湖中真实的已知健康历史数据拟合其统计基线——并非后台持续学习,而是每次被请求时进行的真实、显式的重新拟合。*(已实现)*
+* 🧮 **自带阈值的稳健评分（默认关闭）：** `--detector-config` 中的 `"scoring": "robust"` 把按 RMS 归一化的对数幅值与中位数和稳健离散度比较，只计入高于平常的频点，可以按频带而不是单个频点评分，并自己找出阈值：留出一些健康窗口并为其评分，阈值取其第 99 百分位乘以一个余量。阈值和设置保存在基线文件中。仅在模拟机器上测量过，没有用真实录音。
 * 🏷️ **模型版本管理：** 每个 `Verdict` 都携带真实的、单调递增的模型版本以及对其评分所依据的阈值——一次重新拟合（refit）是一个真实的、可追溯的事件。它还会报告基线是用多少个健康窗口校准的，使告警可解释、可复现。*(已实现)*
 * 📐 **精确率/召回率指标：** 基于标注测试样本（`metrics.py`）计算得到的真实 precision/recall/F1，而非仅是关于分数分离度的文字描述。*(已实现)*
 * 📈 **模拟漂移检测：** `DriftMonitor` 标记出真实的、持续的滚动均值抬升，这与任何单一窗口自身的异常标记不同。*(已实现)*
@@ -168,7 +169,7 @@ curl http://127.0.0.1:8097/stats
 
 ## 🧪 测试
 
-运行 `python -m pytest -q tests` 会执行 179 个自动测试，使用逼真的信号、误报检查和模拟数据湖；不需要硬件和外部网络。
+运行 `python -m pytest -q tests` 会执行 215 个自动测试，使用逼真的信号、误报检查和模拟数据湖；不需要硬件和外部网络。
 
 | 测试文件 | 测试数 | 覆盖内容 |
 |---|---|---|

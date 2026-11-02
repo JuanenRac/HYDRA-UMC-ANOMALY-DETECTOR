@@ -47,6 +47,19 @@ Calling this again replaces the previous baseline - it is not additive. A drift 
 
 ---
 
+## The robust scoring (`"scoring": "robust"`, off by default)
+
+Chosen and tuned in the file of `--detector-config`, not on the command line:
+
+```json
+{"scoring": "robust", "window": "welch", "robust": {"quantile": 0.99, "margin": 1.5, "validationFraction": 0.3, "bands": 0, "side": "up", "normalize": true, "minWindows": 20}}
+```
+
+`POST /baseline/fit` (and the fit of each series) then needs `minWindows` healthy windows (20 by default, at least 11): every `round(1 / validationFraction)`-th window is held out, the median and the spread of the log10 of the RMS-normalised magnitudes are learned from the rest,
+the held-out windows are scored, and the threshold is their `quantile` times `margin`. `POST /detect` answers the same fields as before; `threshold` is the one that was found, `score` is a robust z-score (the worst bin, or the worst band when `bands` is 2 or more) and
+`anomalous` is `score > threshold`. The threshold and the settings are saved in the baseline file. A restored baseline must be of the scoring the server runs with (`400`/refusal at start otherwise); `GET /stats` has `"scoring": "robust"`.
+It lowers the false alarms of a machine whose speed and load wander when there are few healthy windows; with real healthy recordings still to be measured, the threshold it finds is the one of the windows it was given and nothing more.
+
 ## One detector per series
 
 The routes above keep ONE shared baseline. A motor and a spindle do not vibrate alike, and a baseline fitted on one calls the other anomalous, so every operation also exists for a single series, named by the triple HYDRA-UMC-DATALAKE stores it under:

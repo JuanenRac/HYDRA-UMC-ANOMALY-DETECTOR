@@ -328,7 +328,9 @@ class Handler(MetricsHandlerMixin, BaseHTTPRequestHandler):
         if path == "/stats":
             with self.server.lock:
                 fitted = self.server.detector.is_fitted
-            stats = {"fitted": fitted, "window": self.server.detector.window, "writeProtected": bool(self.server.token)}
+            stats: dict = {"fitted": fitted, "window": self.server.detector.window, "writeProtected": bool(self.server.token)}
+            if self.server.detector.scoring != "zscore":
+                stats["scoring"] = self.server.detector.scoring  # only named when it is not the original, so /stats stays what it was
             if self.server.follower_snapshot is not None:
                 stats["follower"] = self.server.follower_snapshot()
             _write_json(self, 200, stats)
@@ -366,7 +368,7 @@ class DetectorServer(ThreadingHTTPServer):
         # One detector per series (sourceId, kind, field), beside the shared one: see registry.py. Without one, the bound is the default and nothing is saved.
         # Set by the command when the continuous service mode runs: what GET /stats shows of it.
         self.follower_snapshot: Callable[[], dict[str, object]] | None = None
-        self.registry = registry if registry is not None else DetectorRegistry(lambda: AnomalyDetector(sample_rate=detector.sample_rate, threshold=detector.threshold, window=detector.window, legacy_baseline=detector.legacy_baseline, min_windows=detector.min_windows, ddof=detector.ddof))
+        self.registry = registry if registry is not None else DetectorRegistry(lambda: AnomalyDetector(sample_rate=detector.sample_rate, threshold=detector.threshold, window=detector.window, legacy_baseline=detector.legacy_baseline, min_windows=detector.min_windows, ddof=detector.ddof, scoring=detector.scoring, robust=detector.robust))
         # With protect_reads (and a token), POST /detect demands the token too; only GET /stats (the health path) stays open.
         # None (the default) means protected whenever a token is set: there is nothing to demand without one.
         self.protect_reads = bool(token) if protect_reads is None else protect_reads

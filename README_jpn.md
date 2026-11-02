@@ -18,7 +18,7 @@ GPL-3.0-or-later - see LICENSE
   <img src="https://img.shields.io/badge/License-GPL%203.0--or--later-blue.svg" alt="GPL 3.0 or later">
   <img src="https://img.shields.io/badge/Tech-Python%20%2F%20NumPy-blueviolet.svg" alt="Tech">
   <img src="https://img.shields.io/badge/Method-FFT%20%2F%20Spectrogram-orange.svg" alt="Method">
-  <img src="https://img.shields.io/badge/Tests-179%20passing-2ea44f.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-215%20passing-2ea44f.svg" alt="Tests">
   <img src="https://img.shields.io/badge/Version-0.2.0-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-functional-0F6CBD.svg" alt="Maturity">
 </p>
@@ -37,7 +37,7 @@ GPL-3.0-or-later - see LICENSE
 |---|---|
 | バージョン | `0.2.0` |
 | 成熟度 | 機能する |
-| テスト | 179 (`python -m pytest -q tests`) |
+| テスト | 215 (`python -m pytest -q tests`) |
 | 技術 | Python / FFT / statistical baseline detection |
 | 対象 | HYDRA-UMC セルの Raspberry Pi CM5 |
 | 実機での確認 | 対象外：ここにあるものはハードウェア上では動きません |
@@ -53,7 +53,7 @@ GPL-3.0-or-later - see LICENSE
 | 領域 | 状態 | ここでの意味 |
 |---|---|---|
 | ソフトウェア | 🟡 | 主な目的では動作します。足りない点は上の正直さの確認に書かれています |
-| テスト | 🟢 | 自動テスト 179 件。変更のたびに実行されます |
+| テスト | 🟢 | 自動テスト 215 件。変更のたびに実行されます |
 | 実機 | 🟢 | 対象外：ここにあるものはハードウェア上では動きません |
 | インターフェースとプロトコル | 🟡 | 提供するルートやメッセージは文書化され、クライアントで試験済みです。すべてのクライアントがまだ使ったわけではありません |
 | 連携 | 🟡 | CM5 のテストベンチで他のサービスと一緒に動作し、メッセージは SDK の共通契約に従います |
@@ -112,6 +112,7 @@ flowchart TB
 * 🚨 **早期警報システム：** Studio と Watch インターフェースに直接アラートを表示すること——構想段階であり、現状この検知器は自身の HTTP API で判定結果を公開し、常時モードでは DATALAKE の `anomaly_score` サンプルと MQTT メッセージとしても公開します。DASHBOARD-AI は HYDRA-UMC-SERVER 経由で読みます（同一オリジンなので CORS は不要）。Studio と Watch のインターフェースはまだそのアラームを表示しません。
 * **常時サービスモード（`--follow-config FILE`）。** 設定した各系列を、DATALAKE から増えていくそばから読み、サンプリングが不規則な箇所で切り、その系列の検知器で完全な窓ごとに採点し、判定を種別 `anomaly_score` のサンプルとして書き戻します。`mqtt` を設定すると、系列の状態が変わったときに保持される状態メッセージを、異常な窓ごとにアラームを公開します。調整する値（系列、窓サイズ、間隔、トピック、ブローカー）はすべて JSON ファイルにあり、止まっている DATALAKE やブローカーは `GET /stats` で数えられるだけでループを止めません。*（実装済み。実物の HTTP DATALAKE 代役と実物の TCP ブローカー代役に対してテスト済みで、本物のサービスでは未実行）*
 * 🧬 **ベースライン学習：** データレイクの実際の健全な履歴からその統計ベースラインを適合させる——バックグラウンドでの継続的な学習ではなく、要求されるたびに行われる本物の明示的な再適合である。*(実装済み)*
+* 🧮 **独自のしきい値を持つロバストなスコア（既定でオフ）：** `--detector-config` の `"scoring": "robust"` は、RMS で正規化した対数振幅を中央値とロバストなばらつきと比較し、通常より高いビンだけを数え、個別のビンの代わりに帯域でスコアを付けることもでき、しきい値を自分で見つけます。健全なウィンドウの一部を取り分けてスコアを付け、その 99 パーセンタイルにマージンを掛けたものがしきい値です。しきい値と設定はベースラインファイルに保存されます。測定はシミュレートした機械のみで、実際の記録では行っていません。
 * 🏷️ **モデルバージョニング：** すべての `Verdict` は、実際に採点されたモデルバージョンと閾値を、単調増加する本物の値として保持します——リフィット（再学習）は本物の、追跡可能なイベントです。また、ベースラインを何個の正常ウィンドウで較正したかも報告するため、アラームを説明・再現できます。*(実装済み)*
 * 📐 **精度/再現率メトリクス：** ラベル付きフィクスチャ(`metrics.py`)に基づいて計算された本物の precision/recall/F1 であり、スコアの分離についての文章による主張だけではありません。*(実装済み)*
 * 📈 **シミュレートされたドリフト検知：** `DriftMonitor` は、個々のウィンドウ自体の異常フラグとは異なる、本物の持続的な移動平均の上昇を検知します。*(実装済み)*
@@ -167,7 +168,7 @@ curl http://127.0.0.1:8097/stats
 
 ## 🧪 テスト
 
-`python -m pytest -q tests` で自動テスト 179 件を実行します。現実的な信号、誤検知の確認、偽のデータレイクを使い、ハードウェアも外部ネットワークも不要です。
+`python -m pytest -q tests` で自動テスト 215 件を実行します。現実的な信号、誤検知の確認、偽のデータレイクを使い、ハードウェアも外部ネットワークも不要です。
 
 | テストファイル | テスト数 | 対象 |
 |---|---|---|

@@ -18,7 +18,7 @@ GPL-3.0-or-later - see LICENSE
   <img src="https://img.shields.io/badge/License-GPL%203.0--or--later-blue.svg" alt="GPL 3.0 or later">
   <img src="https://img.shields.io/badge/Tech-Python%20%2F%20NumPy-blueviolet.svg" alt="Tech">
   <img src="https://img.shields.io/badge/Method-FFT%20%2F%20Spectrogram-orange.svg" alt="Method">
-  <img src="https://img.shields.io/badge/Tests-179%20passing-2ea44f.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-215%20passing-2ea44f.svg" alt="Tests">
   <img src="https://img.shields.io/badge/Version-0.2.0-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-functional-0F6CBD.svg" alt="Maturity">
 </p>
@@ -37,7 +37,7 @@ GPL-3.0-or-later - see LICENSE
 |---|---|
 | Version | `0.2.0` |
 | Maturity | Functional |
-| Tests | 179 (`python -m pytest -q tests`) |
+| Tests | 215 (`python -m pytest -q tests`) |
 | Stack | Python / FFT / statistical baseline detection |
 | Target | The Raspberry Pi CM5 of a HYDRA-UMC cell |
 | On real hardware | Not applicable: nothing here runs on hardware |
@@ -53,7 +53,7 @@ Each line is one part of this repository and the light says how far it is today.
 | Area | State | What it means here |
 |---|---|---|
 | Software | 🟡 | Works for its main purpose; the honesty check above lists what is still missing |
-| Tests | 🟢 | 179 automated tests, run on every change |
+| Tests | 🟢 | 215 automated tests, run on every change |
 | Real hardware | 🟢 | Not applicable: nothing here runs on hardware |
 | Interface and protocols | 🟡 | The routes or messages it offers are documented and tested with a client; not every client has used them yet |
 | Integration | 🟡 | It runs together with the other services on the CM5 test bench and its messages follow the shared contracts of the SDK |
@@ -112,6 +112,7 @@ flowchart TB
 * 🚨 **Early Warning System:** Surfacing alerts directly in the Studio and Watch interfaces - aspirational; today the detector exposes its verdicts over its own HTTP API and, in continuous mode, as `anomaly_score` samples in DATALAKE and as MQTT messages. DASHBOARD-AI reads it through HYDRA-UMC-SERVER (same origin, so no CORS is needed); the Studio and Watch interfaces don't show its alarms yet.
 * **Continuous service mode (`--follow-config FILE`).** Reads each configured series from DATALAKE as it grows, cuts it wherever the sampling is irregular, scores every complete window with the detector of that series, writes the verdict back as a sample of kind `anomaly_score` and, with `mqtt` configured, publishes a retained state message when a series changes state and an alarm for every anomalous window. Everything tuned (series, window size, interval, topics, broker) lives in the JSON file; a DATALAKE or broker that is down is counted in `GET /stats` and never stops the loop. *(implemented; tested against a real HTTP DATALAKE stand-in and a real TCP broker stand-in, never run against the real services)*
 * 🧬 **Baseline Learning:** Fits its statistical baseline from the Datalake's own known-healthy history - not continuous background learning, but a real, explicit refit whenever one is requested. *(implemented)*
+* 🧮 **Robust scoring with its own threshold (off by default):** `"scoring": "robust"` in `--detector-config` compares the log magnitudes normalised by the RMS against the median and a robust spread, counts only bins that are higher than usual, can score bands instead of single bins, and finds the threshold itself: some healthy windows are held out, scored, and the threshold is their 99th percentile times a margin. The threshold and the settings are saved in the baseline file. Measured on simulated machines only, not on real recordings.
 * 🏷️ **Model Versioning:** Every `Verdict` carries the real, monotonic model version and threshold it was scored against - a refit is a real, traceable event. It also reports how many healthy windows the baseline was calibrated from, so an alarm can be explained and reproduced. *(implemented)*
 * 📐 **Precision/Recall Metrics:** Real, computed precision/recall/F1 over a labeled fixture (`metrics.py`), not just prose claims about score separation. *(implemented)*
 * 📈 **Simulated Drift Detection:** `DriftMonitor` flags a real, sustained rolling-mean elevation distinct from any single window's own anomaly flag. *(implemented)*
@@ -167,7 +168,7 @@ curl http://127.0.0.1:8097/stats
 
 ## 🧪 Testing
 
-179 automated tests run with `python -m pytest -q tests`. They use realistic signals, false-positive checks and a fake data lake; no hardware and no outside network.
+215 automated tests run with `python -m pytest -q tests`. They use realistic signals, false-positive checks and a fake data lake; no hardware and no outside network.
 
 | Test file | Tests | What it covers |
 |---|---|---|

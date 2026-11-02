@@ -30,8 +30,12 @@ from .baseline import (
     Baseline,
     BaselineError,
     fit_baseline,
+    fit_robust_baseline,
 )
 from .fft import WINDOWS, compute_spectrum
+from .robust import RobustSettings, features, score_features
+
+SCORINGS = ("zscore", "robust")
 
 
 class NotFittedError(RuntimeError):
@@ -52,7 +56,7 @@ class Verdict:
 class AnomalyDetector:
     def __init__(
         self, sample_rate: float, *, threshold: float = 10.0, window: str = "none", legacy_baseline: bool = False,
-        min_windows: int | None = None, ddof: int | None = None,
+        min_windows: int | None = None, ddof: int | None = None, scoring: str = "zscore", robust: RobustSettings | None = None,
     ) -> None:
         """`threshold` is a cutoff on the WORST (max) per-bin z-score
         across the whole spectrum - taking a max over many bins (a
@@ -84,6 +88,12 @@ class AnomalyDetector:
         self._min_windows = min_windows
         self._ddof = ddof
         self._threshold = threshold
+        if scoring not in SCORINGS:
+            raise ValueError(f"scoring must be one of {SCORINGS}, not {scoring!r}")
+        # "robust" (robust.py) scores the log magnitudes normalised by the RMS against the median and the MAD, in bands, and finds its own threshold from
+        # held-out healthy windows; `threshold` above is then only what the verdict reports before a fit, never what a robust verdict is judged by.
+        self._scoring = scoring
+        self._robust = robust if robust is not None else RobustSettings()
         self._baseline: Baseline | None = None
         # 0 means "never fitted" (is_fitted is False) - real, monotonic
         # versioning: every successful fit() is a real, distinct model a
@@ -99,6 +109,8 @@ class AnomalyDetector:
         """Computes a new baseline WITHOUT installing it, so a caller that
         shares this detector between threads can do the heavy FFT work
         outside its lock and only swap the result in (`adopt`) inside it."""
+        if self._scoring == "robust":
+            return fit_robust_baseline(healthy_windows, self._sample_rate, self._robust, window=self._window)
         return fit_baseline(
             healthy_windows,
             self._sample_rate,
@@ -136,8 +148,21 @@ class AnomalyDetector:
                 f"the baseline was made with window {baseline.window!r} but this detector uses {self._window!r}; "
                 f"start with --window {baseline.window} or refit"
             )
+        if baseline.mode != self._scoring:
+            raise BaselineError(
+                f"the baseline was made with the {baseline.mode!r} scoring but this detector uses {self._scoring!r}; "
+                f"start with the same scoring (--detector-config) or refit"
+            )
         self._baseline = baseline
         self._model_version = model_version
+
+    @property
+    def scoring(self) -> str:
+        return self._scoring
+
+    @property
+    def robust(self) -> RobustSettings:
+        return self._robust
 
     @property
     def window(self) -> str:
@@ -188,6 +213,8 @@ class AnomalyDetector:
         """
         if self._baseline is None:
             raise NotFittedError("call fit() with known-healthy windows before score()")
+        if self._baseline.mode == "robust":
+            return self._score_robust(window)
         spectrum = compute_spectrum(window, self._sample_rate, self._window)
         z = self._baseline.z_scores(spectrum)
         worst_idx = int(np.argmax(np.abs(z)))
@@ -199,4 +226,22 @@ class AnomalyDetector:
             model_version=self._model_version,
             threshold=self._threshold,
             calibration_windows=self._baseline.n_windows,
+        )
+
+    def _score_robust(self, window: np.ndarray | list[float]) -> Verdict:
+        baseline = self._baseline
+        assert baseline is not None and baseline.settings is not None and baseline.threshold is not None
+        freqs, feats = features(window, self._sample_rate, self._window, baseline.settings)
+        if len(feats) != len(baseline.mean):
+            raise BaselineError(
+                f"spectrum has {len(feats)} bins, baseline was fit with {len(baseline.mean)} - use the same window length and sample rate as training"
+            )
+        score, index = score_features((feats - baseline.mean) / baseline.std, baseline.settings.bands, baseline.settings.side)
+        return Verdict(
+            score=score,
+            anomalous=score > baseline.threshold,
+            worst_bin_freq=float(freqs[index]),
+            model_version=self._model_version,
+            threshold=baseline.threshold,
+            calibration_windows=baseline.n_windows,
         )

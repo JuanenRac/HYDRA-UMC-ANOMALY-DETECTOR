@@ -33,7 +33,8 @@ from .datalake_client import DatalakeClient, DatalakeError, fetch_windows_checke
 from .follower import Follower, FollowConfigError, load_follow_config
 from .mqtt_publish import MqttPublisher
 from .fft import WINDOWS
-from .detector import AnomalyDetector
+from .detector import SCORINGS, AnomalyDetector
+from .robust import RobustError, parse_robust_settings
 from .registry import DEFAULT_MAX_DETECTORS, DetectorRegistry
 
 PROJECT_NAME = "HYDRA-UMC-ANOMALY-DETECTOR"
@@ -124,6 +125,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--ddof", type=int, choices=(0, 1), default=None, help="1 = sample standard deviation (default), 0 = population one; can also be set in --detector-config")
     parser.add_argument("--detector-config", default=None, help="JSON file with the tuned values of the detector (threshold, window, minWindows, ddof, sampleRate, legacyBaseline, rul, rulMinPoints); a flag given on the command line wins over the file")
     parser.add_argument("--window", choices=WINDOWS, default="none", help="window applied before the FFT: none (the original behaviour), hann (removes the mean and the leakage of a speed that wanders) or welch (Hann segments averaged in power: steadier magnitudes, half the frequency resolution); recalibrate --threshold with real healthy recordings before trusting hann or welch. A baseline remembers the window it was made with.")
+    # the robust scoring (robust.py) is chosen and tuned in --detector-config ("scoring": "robust", "robust": {...}); it has no flags of its own
+    parser.set_defaults(scoring="zscore", robust=None)
     parser.add_argument("--train-start", type=int, default=None, help="first timestamp (unix ms) of the training history read from DATALAKE")
     parser.add_argument("--train-end", type=int, default=None, help="last timestamp (unix ms) of the training history read from DATALAKE")
     parser.add_argument("--max-train-points", type=int, default=200_000, help="most points read from DATALAKE for training (the read is paged, oldest first; reaching this is reported)")
@@ -141,7 +144,7 @@ def main(argv: list[str] | None = None) -> int:
             raw = json.loads(Path(pre.detector_config).read_text(encoding="utf-8"))
             if not isinstance(raw, dict):
                 raise ValueError("the file must hold a JSON object")
-            names = {"threshold": "threshold", "window": "window", "minWindows": "min_windows", "ddof": "ddof", "sampleRate": "sample_rate", "legacyBaseline": "legacy_baseline", "rul": "rul", "rulMinPoints": "rul_min_points"}
+            names = {"threshold": "threshold", "window": "window", "minWindows": "min_windows", "ddof": "ddof", "sampleRate": "sample_rate", "legacyBaseline": "legacy_baseline", "rul": "rul", "rulMinPoints": "rul_min_points", "scoring": "scoring", "robust": "robust"}
             unknown = sorted(set(raw) - set(names))
             if unknown:
                 raise ValueError(f"unknown keys: {', '.join(unknown)}")
@@ -152,6 +155,14 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if not isinstance(args.rul, bool) or isinstance(args.rul_min_points, bool) or not isinstance(args.rul_min_points, int) or args.rul_min_points < 3:
         print("error: rul must be true or false and rul-min-points an integer of at least 3", file=sys.stderr)
+        return 2
+    if args.scoring not in SCORINGS:
+        print("error: scoring must be one of " + ", ".join(SCORINGS), file=sys.stderr)
+        return 2
+    try:
+        robust_settings = parse_robust_settings(args.robust if args.robust is not None else {})
+    except RobustError as e:
+        print(f"error: --detector-config: {e}", file=sys.stderr)
         return 2
     if args.window not in WINDOWS or (args.min_windows is not None and args.min_windows < 2):
         print("error: window must be one of " + ", ".join(WINDOWS) + " and min-windows at least 2", file=sys.stderr)
@@ -182,7 +193,7 @@ def main(argv: list[str] | None = None) -> int:
     print(f"{PROJECT_NAME} v{__version__}")
     print(ROLE)
 
-    detector = AnomalyDetector(sample_rate=args.sample_rate, threshold=args.threshold, window=args.window, legacy_baseline=args.legacy_baseline, min_windows=args.min_windows, ddof=args.ddof)
+    detector = AnomalyDetector(sample_rate=args.sample_rate, threshold=args.threshold, window=args.window, legacy_baseline=args.legacy_baseline, min_windows=args.min_windows, ddof=args.ddof, scoring=args.scoring, robust=robust_settings)
     baseline_path = Path(args.baseline_path) if args.baseline_path else None
 
     if args.datalake_url is not None:
@@ -234,7 +245,7 @@ def main(argv: list[str] | None = None) -> int:
         print("error: --max-series must be at least 1", file=sys.stderr)
         return 2
     registry = DetectorRegistry(
-        lambda: AnomalyDetector(sample_rate=args.sample_rate, threshold=args.threshold, window=args.window, legacy_baseline=args.legacy_baseline, min_windows=args.min_windows, ddof=args.ddof),
+        lambda: AnomalyDetector(sample_rate=args.sample_rate, threshold=args.threshold, window=args.window, legacy_baseline=args.legacy_baseline, min_windows=args.min_windows, ddof=args.ddof, scoring=args.scoring, robust=robust_settings),
         Path(args.baseline_dir) if args.baseline_dir else None,
         args.max_series,
     )

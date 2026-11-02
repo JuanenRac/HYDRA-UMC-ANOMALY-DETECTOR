@@ -18,7 +18,7 @@ GPL-3.0-or-later - see LICENSE
   <img src="https://img.shields.io/badge/License-GPL%203.0--or--later-blue.svg" alt="GPL 3.0 or later">
   <img src="https://img.shields.io/badge/Tech-Python%20%2F%20NumPy-blueviolet.svg" alt="Tech">
   <img src="https://img.shields.io/badge/Method-FFT%20%2F%20Spectrogram-orange.svg" alt="Method">
-  <img src="https://img.shields.io/badge/Tests-179%20passing-2ea44f.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-215%20passing-2ea44f.svg" alt="Tests">
   <img src="https://img.shields.io/badge/Version-0.2.0-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-functional-0F6CBD.svg" alt="Maturity">
 </p>
@@ -37,7 +37,7 @@ GPL-3.0-or-later - see LICENSE
 |---|---|
 | Versão | `0.2.0` |
 | Maturidade | Funcional |
-| Testes | 179 (`python -m pytest -q tests`) |
+| Testes | 215 (`python -m pytest -q tests`) |
 | Tecnologia | Python / FFT / statistical baseline detection |
 | Destino | O Raspberry Pi CM5 de uma célula HYDRA-UMC |
 | Em hardware real | Não aplicável: nada aqui corre em hardware |
@@ -53,7 +53,7 @@ Cada linha é uma parte deste repositório e a luz diz até onde chega hoje. É 
 | Área | Estado | O que significa aqui |
 |---|---|---|
 | Software | 🟡 | Funciona para o seu propósito principal; a verificação de honestidade acima lista o que ainda falta |
-| Testes | 🟢 | 179 testes automáticos, executados a cada alteração |
+| Testes | 🟢 | 215 testes automáticos, executados a cada alteração |
 | Hardware real | 🟢 | Não aplicável: nada aqui corre em hardware |
 | Interface e protocolos | 🟡 | As rotas ou mensagens que oferece estão documentadas e testadas com um cliente; ainda nem todos os clientes as usaram |
 | Integração | 🟡 | Funciona em conjunto com os outros serviços na bancada de testes da CM5 e as suas mensagens seguem os contratos partilhados do SDK |
@@ -112,6 +112,7 @@ flowchart TB
 * 🚨 **Sistema de alerta precoce:** apresentar alertas diretamente nas interfaces do Studio e do Watch - aspiracional; hoje o detetor expõe os seus veredictos pela sua própria API HTTP e, em modo contínuo, como amostras `anomaly_score` no DATALAKE e como mensagens MQTT. O DASHBOARD-AI lê-o através do HYDRA-UMC-SERVER (mesma origem, pelo que não é preciso CORS); as interfaces do Studio e do Watch ainda não mostram os seus alarmes.
 * **Modo de serviço contínuo (`--follow-config FICHEIRO`).** Lê cada série configurada do DATALAKE à medida que cresce, corta-a onde a amostragem é irregular, pontua cada janela completa com o detetor dessa série, escreve o veredicto de volta como amostra do tipo `anomaly_score` e, com `mqtt` configurado, publica uma mensagem de estado retida quando uma série muda de estado e um alarme por cada janela anómala. Tudo o que se afina (séries, tamanho da janela, intervalo, tópicos, broker) está no ficheiro JSON; um DATALAKE ou broker em baixo é contado em `GET /stats` e nunca pára o ciclo. *(implementado; testado contra um DATALAKE HTTP de substituição real e um broker TCP de substituição real, nunca executado contra os serviços verdadeiros)*
 * 🧬 **Aprendizagem da linha de base:** ajusta a sua linha de base estatística a partir do próprio histórico conhecido como saudável do Datalake - não é aprendizagem contínua em segundo plano, mas um reajuste real e explícito sempre que é pedido. *(implementado)*
+* 🧮 **Pontuação robusta com limiar próprio (desligada por omissão):** `"scoring": "robust"` em `--detector-config` compara as magnitudes logarítmicas normalizadas pelo RMS com a mediana e uma dispersão robusta, conta apenas os bins mais altos do que o habitual, pode pontuar bandas em vez de bins soltos e encontra o limiar por si: algumas janelas saudáveis são postas de parte e pontuadas, e o limiar é o seu percentil 99 vezes uma margem. O limiar e as definições ficam guardados no ficheiro da linha de base. Medido apenas em máquinas simuladas, não em gravações reais.
 * 🏷️ **Versionamento de modelos:** cada `Verdict` transporta a versão real e monótona do modelo e o limiar contra os quais foi avaliado - um reajuste é um acontecimento real e rastreável. Reporta também com quantas janelas saudáveis a linha de base foi calibrada, para que um alarme possa ser explicado e reproduzido. *(implementado)*
 * 📐 **Métricas de precisão/recuperação:** precisão/recuperação/F1 reais e calculados sobre um conjunto etiquetado (`metrics.py`), e não apenas afirmações em prosa sobre a separação das pontuações. *(implementado)*
 * 📈 **Deteção simulada de deriva:** o `DriftMonitor` assinala uma elevação real e sustentada da média móvel, distinta da própria marca de anomalia de qualquer janela individual. *(implementado)*
@@ -167,7 +168,7 @@ curl http://127.0.0.1:8097/stats
 
 ## 🧪 Testes
 
-179 testes automáticos correm com `python -m pytest -q tests`. Usam sinais realistas, verificações de falsos positivos e um data lake simulado; sem hardware nem rede externa.
+215 testes automáticos correm com `python -m pytest -q tests`. Usam sinais realistas, verificações de falsos positivos e um data lake simulado; sem hardware nem rede externa.
 
 | Ficheiro de testes | Testes | O que cobre |
 |---|---|---|
