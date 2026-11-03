@@ -398,6 +398,7 @@ class DetectorServer(ThreadingHTTPServer):
     mutate/read numpy state that (like HYDRA-UMC-DATALAKE's sqlite3
     connection) is not safe to touch from multiple threads at once under
     ThreadingHTTPServer without one."""
+    health_open: bool = False  # GET /health answers only when the operator opens it (health_route.py)
 
     def __init__(
         self,
