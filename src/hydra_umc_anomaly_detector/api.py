@@ -20,6 +20,7 @@ from typing import Any
 from urllib.parse import unquote, urlparse
 
 from . import __version__
+from .health_route import HealthRouteMixin
 from .service_metrics import MetricsHandlerMixin
 from .baseline import BaselineError, save_baseline
 from .detector import AnomalyDetector, NotFittedError
@@ -86,7 +87,7 @@ def _write_json(handler: BaseHTTPRequestHandler, status: int, payload: object) -
     handler.wfile.write(body)
 
 
-class Handler(MetricsHandlerMixin, BaseHTTPRequestHandler):
+class Handler(HealthRouteMixin, MetricsHandlerMixin, BaseHTTPRequestHandler):
     server: "DetectorServer"
     metrics_service = "hydra-umc-anomaly-detector"
     metrics_version = __version__
@@ -362,6 +363,8 @@ class Handler(MetricsHandlerMixin, BaseHTTPRequestHandler):
         )
 
     def do_GET(self) -> None:  # noqa: N802
+        if self.serve_health(self.server.token):
+            return
         if self.serve_metrics(authorized=(not self.server.protect_reads) or _authorized(self)):
             return
         path = urlparse(self.path).path

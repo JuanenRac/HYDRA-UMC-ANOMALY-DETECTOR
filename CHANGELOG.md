@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **A uniform `GET /health`, closed by default:** `serve --health-open` (or `HYDRA_UMC_ANOMALY_DETECTOR_HEALTH_OPEN=1`) makes the service answer `GET /health` with `{"status": "ok", "service": ..., "version": ...}`, the same body in every service of the family, so a watchdog reads the health of any of them the same way. Without the switch the route answers `404` like a route that does not exist. A caller that is not on loopback must present the bearer token of the service (a service started without a token never answers one). The body carries no path, configuration or secret; the health path the manifest declares does not change.
+
 - **A diagnosis by the characteristic frequencies of a machine, and order tracking, both off by default (`diagnosis` and `orderTracking` in `--detector-config`):** with the bearings (balls, ball and pitch diameter, contact angle), the belt and the gears of a machine written in the file, `POST /diagnose` takes a window and the shaft speed and names what a peak may mean (BPFO, BPFI, BSF and cage of each bearing, belt, gear mesh, shaft speed) in en, es, de, fr, it, ja, zh or pt, with its harmonics and a confidence; a peak counts for the nearest line only. With a speed per sample and `orderTracking.enabled`, the window is re-sampled by angle first, so a speed that changes keeps the peaks sharp and a baseline made on orders does not call a new speed an anomaly. 17 new tests, all on synthetic signals: nothing was run on a real machine, and the tolerances and ratios have to be tuned with real recordings.
 
 ## [0.2.1] - A fleet view with the last score and drift per series and maintenance proposals sent to the dispatcher after sustained drift

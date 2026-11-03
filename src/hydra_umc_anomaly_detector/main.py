@@ -27,6 +27,7 @@ import sys
 from pathlib import Path
 
 from . import __version__
+from .health_route import health_open_requested
 from .api import DetectorServer
 from .baseline import BaselineError, load_baseline, save_baseline
 from .datalake_client import DatalakeClient, DatalakeError, fetch_windows_checked
@@ -89,6 +90,7 @@ def main(argv: list[str] | None = None) -> int:
     # unit, a developer testing it locally) is safe by default instead
     # of silently wide open.
     parser.add_argument("--addr", default="127.0.0.1", help="address to bind the HTTP API to")
+    parser.add_argument("--health-open", action="store_true", help="answer GET /health (open to loopback, to other callers only with the bearer token); closed by default, or set HYDRA_UMC_ANOMALY_DETECTOR_HEALTH_OPEN=1")
     parser.add_argument("--port", type=int, default=8097, help="port for the HTTP API")
     parser.add_argument(
         "--sample-rate",
@@ -297,6 +299,7 @@ def main(argv: list[str] | None = None) -> int:
           f"{'reads and writes' if protect_reads else 'writes'} {'need a token' if token else 'open (loopback only)'})")
     print("[anomaly-detector] POST /baseline/fit, POST /detect, GET /stats; one detector per series: POST /detectors/{sourceId}/{kind}/{field}/fit|detect|drift/init|drift/observe, GET /detectors")
     try:
+        server.health_open = health_open_requested(args.health_open)
         server.serve_forever()
     except KeyboardInterrupt:
         pass
