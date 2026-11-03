@@ -91,6 +91,7 @@ class MqttPublisher:
         try:
             if target.tls:
                 context = ssl.create_default_context(cafile=target.ca_file)
+                context.minimum_version = ssl.TLSVersion.TLSv1_2
                 connection = context.wrap_socket(raw, server_hostname=target.host)
             connection.settimeout(target.timeout_s)
             connection.sendall(connect_packet(target.client_id, target.username, target.password))
