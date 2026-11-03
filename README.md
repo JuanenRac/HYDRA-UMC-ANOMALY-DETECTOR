@@ -117,6 +117,7 @@ flowchart TB
 * 🏷️ **Model Versioning:** Every `Verdict` carries the real, monotonic model version and threshold it was scored against - a refit is a real, traceable event. It also reports how many healthy windows the baseline was calibrated from, so an alarm can be explained and reproduced. *(implemented)*
 * 📐 **Precision/Recall Metrics:** Real, computed precision/recall/F1 over a labeled fixture (`metrics.py`), not just prose claims about score separation. *(implemented)*
 * 📈 **Simulated Drift Detection:** `DriftMonitor` flags a real, sustained rolling-mean elevation distinct from any single window's own anomaly flag. *(implemented)*
+* 🩺 **A uniform `GET /health`, closed by default:** `serve --health-open` (or `HYDRA_UMC_ANOMALY_DETECTOR_HEALTH_OPEN=1`) makes the service answer `GET /health` with `{"status": "ok", "service": ..., "version": ...}`, the same body in every service of the family; without the switch the route answers `404` like a route that does not exist. A caller that is not on loopback must present the bearer token of the service, and the body carries no path, configuration or secret.
 
 A baseline needs at least ten healthy windows and uses the sample standard deviation (`ddof=1`); the alarm threshold is unchanged, so a real anomaly is not hidden. Baselines saved earlier keep working as they are.
 
