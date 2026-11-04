@@ -134,7 +134,8 @@ def main(argv: list[str] | None = None) -> int:
     # ("scoring": "robust", "robust": {...}, "diagnosis": {...}, "orderTracking": {...}); they have no flags of their own
     parser.set_defaults(scoring="zscore", robust=None, diagnosis=None, order_tracking=None)
     parser.add_argument("--train-start", type=int, default=None, help="first timestamp (unix ms) of the training history read from DATALAKE")
-    parser.add_argument("--train-end", type=int, default=None, help="last timestamp (unix ms) of the training history read from DATALAKE")
+    parser.add_argument("--train-end", type=int, default=None, help="last timestamp (unix ms, inclusive) of the training history read from DATALAKE")
+    parser.add_argument("--train-before", type=int, default=None, help="exclusive end (unix ms) of the training history read from DATALAKE: the window is [--train-start, --train-before), so the boundary point of a shift or a day is not counted twice; not together with --train-end")
     parser.add_argument("--max-train-points", type=int, default=200_000, help="most points read from DATALAKE for training (the read is paged, oldest first; reaching this is reported)")
     parser.add_argument("--baseline-dir", default=None, help="Persist the baseline of each series (POST /detectors/{sourceId}/{kind}/{field}/fit) in this directory and restore them on startup.")
     parser.add_argument("--max-series", type=int, default=DEFAULT_MAX_DETECTORS, help="most series that may have a detector of their own at once (default %(default)s)")
@@ -198,6 +199,10 @@ def main(argv: list[str] | None = None) -> int:
         print(f"error: --addr {args.addr} is not loopback: set --token-file (or HYDRA_UMC_ANOMALY_TOKEN) so the baseline cannot be replaced by anyone who reaches the port", file=sys.stderr)
         return 2
 
+    if args.train_end is not None and args.train_before is not None:
+        print("error: send --train-end (inclusive) or --train-before (exclusive), not both", file=sys.stderr)
+        return 2
+
     if args.datalake_url is not None and (args.source_id is None or args.kind is None or args.field is None or args.window_size is None):
         print("error: --datalake-url requires --source-id, --kind, --field and --window-size", file=sys.stderr)
         return 2
@@ -213,7 +218,7 @@ def main(argv: list[str] | None = None) -> int:
         try:
             fetched = fetch_windows_checked(
                 client, source_id=args.source_id, kind=args.kind, field=args.field, window_size=args.window_size,
-                sample_rate=args.sample_rate, start=args.train_start, end=args.train_end, max_points=args.max_train_points,
+                sample_rate=args.sample_rate, start=args.train_start, end=args.train_end, before=args.train_before, max_points=args.max_train_points,
             )
             windows = fetched.windows
             print(f"[anomaly-detector] read from DATALAKE: {fetched.summary()}")

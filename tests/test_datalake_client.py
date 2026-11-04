@@ -79,3 +79,48 @@ def test_fetch_windows_rejects_a_non_positive_window_size() -> None:
         client = DatalakeClient(url)
         with pytest.raises(ValueError):
             fetch_windows(client, source_id="motor-1", kind="vibration", field="value", window_size=0)
+
+
+# ---------------------------------------------------------------------------
+# The edge of a window: `before` is the exclusive end, so two consecutive
+# half-open windows [a, b) and [b, c) never count the point at b twice.
+# ---------------------------------------------------------------------------
+
+
+def _edge_points() -> list[dict]:
+    return [
+        {"sourceId": "m", "kind": "vibration", "field": "value", "timestamp": t, "value": float(t)}
+        for t in (1000, 2000, 3000, 4000)
+    ]
+
+
+def test_before_is_exclusive_and_end_is_inclusive() -> None:
+    with running_fake_datalake() as (url, server):
+        server.points = _edge_points()
+        client = DatalakeClient(url)
+        assert [p.timestamp for p in client.query(source_id="m", start=1000, end=3000)] == [1000, 2000, 3000]
+        assert [p.timestamp for p in client.query(source_id="m", start=1000, before=3000)] == [1000, 2000]
+
+
+def test_two_consecutive_windows_do_not_share_the_boundary_point() -> None:
+    with running_fake_datalake() as (url, server):
+        server.points = _edge_points()
+        client = DatalakeClient(url)
+        first = [p.timestamp for p in client.query(source_id="m", start=1000, before=3000)]
+        second = [p.timestamp for p in client.query(source_id="m", start=3000, before=5000)]
+        assert not set(first) & set(second)
+        assert sorted(first + second) == [1000, 2000, 3000, 4000]
+
+
+def test_end_and_before_together_are_refused() -> None:
+    client = DatalakeClient("http://127.0.0.1:1", timeout_s=1.0, max_attempts=1)
+    with pytest.raises(ValueError):
+        client.query(source_id="m", end=3000, before=3000)
+
+
+def test_fetch_windows_accepts_the_exclusive_end() -> None:
+    with running_fake_datalake() as (url, server):
+        server.points = _edge_points()
+        client = DatalakeClient(url)
+        windows = fetch_windows(client, source_id="m", kind="vibration", field="value", window_size=2, start=1000, before=3000)
+        assert windows == [[1000.0, 2000.0]]

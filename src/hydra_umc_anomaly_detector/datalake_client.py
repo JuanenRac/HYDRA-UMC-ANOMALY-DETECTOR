@@ -120,10 +120,16 @@ class DatalakeClient:
         field: str | None = None,
         start: int | None = None,
         end: int | None = None,
+        before: int | None = None,
         limit: int = 10000,
     ) -> list[Point]:
         """Real range query against DATALAKE's own GET /query. Points
-        come back sorted by timestamp ASC (store.py's own convention)."""
+        come back sorted by timestamp ASC (store.py's own convention).
+
+        `end` is inclusive; `before` is the exclusive end of a half-open window `[start, before)`
+        (a shift, a day) that does not count its boundary point twice. Send one of them, not both."""
+        if end is not None and before is not None:
+            raise ValueError("send end (inclusive) or before (exclusive), not both")
         params: dict[str, str | int] = {"limit": limit}
         if source_id is not None:
             params["sourceId"] = source_id
@@ -135,6 +141,8 @@ class DatalakeClient:
             params["start"] = start
         if end is not None:
             params["end"] = end
+        if before is not None:
+            params["before"] = before
 
         raw = self._get("/query", params)
         return [
@@ -198,6 +206,7 @@ def fetch_windows_checked(
     sample_rate: float,
     start: int | None = None,
     end: int | None = None,
+    before: int | None = None,
     page_size: int = 10000,
     max_points: int = 200_000,
     tolerance: float = 0.5,
@@ -230,7 +239,7 @@ def fetch_windows_checked(
     truncated = False
     last_timestamp: int | None = None
     while True:
-        page = client.query(source_id=source_id, kind=kind, field=field, start=cursor, end=end, limit=page_size)
+        page = client.query(source_id=source_id, kind=kind, field=field, start=cursor, end=end, before=before, limit=page_size)
         pages += 1
         for point in page:
             if last_timestamp is not None and point.timestamp <= last_timestamp:
@@ -270,6 +279,7 @@ def fetch_windows(
     window_size: int,
     start: int | None = None,
     end: int | None = None,
+    before: int | None = None,
     limit: int = 10000,
 ) -> list[list[float]]:
     """Fetches real points for one (source_id, kind, field) series and
@@ -283,7 +293,7 @@ def fetch_windows(
     """
     if window_size <= 0:
         raise ValueError(f"window_size must be positive, got {window_size}")
-    points = client.query(source_id=source_id, kind=kind, field=field, start=start, end=end, limit=limit)
+    points = client.query(source_id=source_id, kind=kind, field=field, start=start, end=end, before=before, limit=limit)
     values = [p.value for p in points]
     window_count = len(values) // window_size
     return [values[i * window_size : (i + 1) * window_size] for i in range(window_count)]

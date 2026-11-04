@@ -18,7 +18,7 @@ GPL-3.0-or-later - see LICENSE
   <img src="https://img.shields.io/badge/License-GPL%203.0--or--later-blue.svg" alt="GPL 3.0 or later">
   <img src="https://img.shields.io/badge/Tech-Python%20%2F%20NumPy-blueviolet.svg" alt="Tech">
   <img src="https://img.shields.io/badge/Method-FFT%20%2F%20Spectrogram-orange.svg" alt="Method">
-  <img src="https://img.shields.io/badge/Tests-262%20passing-2ea44f.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-266%20passing-2ea44f.svg" alt="Tests">
   <img src="https://img.shields.io/badge/Version-0.2.1-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-functional-0F6CBD.svg" alt="Maturity">
 </p>
@@ -37,7 +37,7 @@ GPL-3.0-or-later - see LICENSE
 |---|---|
 | Versión | `0.2.1` |
 | Madurez | Funcional |
-| Tests | 262 (`python -m pytest -q tests`) |
+| Tests | 266 (`python -m pytest -q tests`) |
 | Tecnología | Python / FFT / statistical baseline detection |
 | Destino | La Raspberry Pi CM5 de una celda HYDRA-UMC |
 | En hardware real | No aplica: nada de esto se ejecuta en hardware |
@@ -53,7 +53,7 @@ Cada línea es una parte de este repositorio y la luz dice hasta dónde llega ho
 | Área | Estado | Qué significa aquí |
 |---|---|---|
 | Software | 🟡 | Funciona para su propósito principal; la comprobación de honestidad de arriba lista lo que aún falta |
-| Pruebas | 🟢 | 262 pruebas automáticas, ejecutadas en cada cambio |
+| Pruebas | 🟢 | 266 pruebas automáticas, ejecutadas en cada cambio |
 | Hardware real | 🟢 | No aplica: nada de esto se ejecuta en hardware |
 | Interfaz y protocolos | 🟡 | Las rutas o los mensajes que ofrece están documentados y probados con un cliente; aún no los han usado todos los clientes |
 | Integración | 🟡 | Funciona junto con los demás servicios en el banco de pruebas de la CM5 y sus mensajes siguen los contratos compartidos del SDK |
@@ -152,7 +152,7 @@ HTTP en `127.0.0.1:8097` por defecto; la referencia completa es `docs/API.md`.
 | `--addr`, `--port` | `127.0.0.1`, `8097` | dónde escucha la API HTTP |
 | `--sample-rate`, `--threshold` | `1000.0`, `10.0` | frecuencia de muestreo en Hz; el mayor z-score que puede tener un bin |
 | `--window`, `--window-size` | `none` | `none` o `hann` antes de la FFT; muestras por ventana (necesario con `--datalake-url`) |
-| `--datalake-url`, `--source-id`, `--kind`, `--field`, `--train-start`, `--train-end` | sin definir | ajustar una línea base nueva al arrancar desde el data lake (los cuatro primeros van juntos) |
+| `--datalake-url`, `--source-id`, `--kind`, `--field`, `--train-start`, `--train-end` / `--train-before` | sin definir | ajustar una línea base nueva al arrancar desde el data lake (los cuatro primeros van juntos) |
 | `--max-train-points`, `--max-series` | `200000`, `64` | máximo de puntos leídos al entrenar; máximo de detectores |
 | `--token-file`, `HYDRA_UMC_ANOMALY_TOKEN` | sin token | el token Bearer de la API |
 | `HYDRA_UMC_ANOMALY_PROTECT_READS` | protegido si hay token | `0` abre `POST /detect`, `1` lo protege |
@@ -170,7 +170,7 @@ curl http://127.0.0.1:8097/stats
 
 ## 🧪 Pruebas
 
-262 pruebas automáticas se ejecutan con `python -m pytest -q tests`. Usan señales realistas, comprobaciones de falsos positivos y un data lake simulado; sin hardware ni red externa.
+266 pruebas automáticas se ejecutan con `python -m pytest -q tests`. Usan señales realistas, comprobaciones de falsos positivos y un data lake simulado; sin hardware ni red externa.
 
 | Fichero de pruebas | Pruebas | Qué cubre |
 |---|---|---|

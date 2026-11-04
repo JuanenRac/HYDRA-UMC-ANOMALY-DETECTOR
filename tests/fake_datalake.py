@@ -63,6 +63,8 @@ class _Handler(BaseHTTPRequestHandler):
                 points = [p for p in points if p["timestamp"] >= int(params["start"])]
             if "end" in params:
                 points = [p for p in points if p["timestamp"] <= int(params["end"])]
+            if "before" in params:
+                points = [p for p in points if p["timestamp"] < int(params["before"])]
             points = sorted(points, key=lambda p: p["timestamp"])
             if "limit" in params:
                 points = points[: int(params["limit"])]
