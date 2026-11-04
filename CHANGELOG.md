@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **The manifest declares the uniform `GET /health` route:** `service.health_path` is `/health` now. The route stays closed (404) until the service switch opens it, and the health checks of the server and of the family ask `/stats` after a 404 on `/health`.
+
 ## [0.2.2] - An exclusive end for the training window: --train-before (and before in DatalakeClient.query, fetchwindows and fetchwindowschecked) reads the half-open window [start, before) that the data lake already understands, so the... (and 2 more changes)
 
 - **An exclusive end for the training window:** `--train-before` (and `before` in `DatalakeClient.query`, `fetch_windows` and `fetch_windows_checked`) reads the half-open window `[start, before)` that the data lake already understands, so the point on the boundary between two shifts or two days is never counted twice; `--train-end` stays inclusive and sending both is refused. 4 new tests on the edge, with a fake data lake that applies `before` like the real one.
