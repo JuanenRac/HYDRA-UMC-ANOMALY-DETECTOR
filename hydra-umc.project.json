@@ -26,5 +26,8 @@
     "port": 8097,
     "health_path": "/health",
     "systemd_unit": "hydra-umc-anomaly-detector.service"
-  }
+  },
+  "depends_on": [
+    "HYDRA-UMC-DATALAKE"
+  ]
 }
