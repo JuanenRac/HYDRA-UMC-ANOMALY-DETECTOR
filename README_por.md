@@ -19,7 +19,7 @@ GPL-3.0-or-later - see LICENSE
   <img src="https://img.shields.io/badge/Tech-Python%20%2F%20NumPy-blueviolet.svg" alt="Tech">
   <img src="https://img.shields.io/badge/Method-FFT%20%2F%20Spectrogram-orange.svg" alt="Method">
   <img src="https://img.shields.io/badge/Tests-266%20passing-2ea44f.svg" alt="Tests">
-  <img src="https://img.shields.io/badge/Version-0.2.1-0f6cbd.svg" alt="Version">
+  <img src="https://img.shields.io/badge/Version-0.2.2-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-functional-0F6CBD.svg" alt="Maturity">
 </p>
 
@@ -35,7 +35,7 @@ GPL-3.0-or-later - see LICENSE
 
 | | |
 |---|---|
-| Versão | `0.2.1` |
+| Versão | `0.2.2` |
 | Maturidade | Funcional |
 | Testes | 266 (`python -m pytest -q tests`) |
 | Tecnologia | Python / FFT / statistical baseline detection |
@@ -152,7 +152,7 @@ HTTP em `127.0.0.1:8097` por predefinição; a referência completa é `docs/API
 | `--addr`, `--port` | `127.0.0.1`, `8097` | onde a API HTTP escuta |
 | `--sample-rate`, `--threshold` | `1000.0`, `10.0` | taxa de amostragem em Hz; o maior z-score que um bin pode ter |
 | `--window`, `--window-size` | `none` | `none` ou `hann` antes da FFT; amostras por janela (necessário com `--datalake-url`) |
-| `--datalake-url`, `--source-id`, `--kind`, `--field`, `--train-start`, `--train-end` / `--train-before` | por definir | ajustar uma linha de base nova no arranque a partir do data lake (os primeiros quatro vão juntos) |
+| `--datalake-url`, `--source-id`, `--kind`, `--field`, `--train-start`, `--train-end` | por definir | ajustar uma linha de base nova no arranque a partir do data lake (os primeiros quatro vão juntos) |
 | `--max-train-points`, `--max-series` | `200000`, `64` | máximo de pontos lidos no treino; máximo de detetores |
 | `--token-file`, `HYDRA_UMC_ANOMALY_TOKEN` | sem token | o token Bearer da API |
 | `HYDRA_UMC_ANOMALY_PROTECT_READS` | protegido se houver token | `0` abre `POST /detect`, `1` protege-o |

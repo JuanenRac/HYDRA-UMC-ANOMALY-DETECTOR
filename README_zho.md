@@ -19,7 +19,7 @@ GPL-3.0-or-later - see LICENSE
   <img src="https://img.shields.io/badge/Tech-Python%20%2F%20NumPy-blueviolet.svg" alt="Tech">
   <img src="https://img.shields.io/badge/Method-FFT%20%2F%20Spectrogram-orange.svg" alt="Method">
   <img src="https://img.shields.io/badge/Tests-266%20passing-2ea44f.svg" alt="Tests">
-  <img src="https://img.shields.io/badge/Version-0.2.1-0f6cbd.svg" alt="Version">
+  <img src="https://img.shields.io/badge/Version-0.2.2-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-functional-0F6CBD.svg" alt="Maturity">
 </p>
 
@@ -35,7 +35,7 @@ GPL-3.0-or-later - see LICENSE
 
 | | |
 |---|---|
-| 版本 | `0.2.1` |
+| 版本 | `0.2.2` |
 | 成熟度 | 可用 |
 | 测试 | 266 (`python -m pytest -q tests`) |
 | 技术栈 | Python / FFT / statistical baseline detection |
@@ -153,7 +153,7 @@ flowchart TB
 | `--addr`, `--port` | `127.0.0.1`, `8097` | HTTP API 的监听位置 |
 | `--sample-rate`, `--threshold` | `1000.0`, `10.0` | 采样率（Hz）；一个频点允许的最大 z 分数 |
 | `--window`, `--window-size` | `none` | FFT 之前用 `none` 或 `hann`；每个窗口的样本数（配合 `--datalake-url` 时必需） |
-| `--datalake-url`, `--source-id`, `--kind`, `--field`, `--train-start`, `--train-end` / `--train-before` | 未设置 | 启动时从数据湖拟合新基线（前四个必须一起给） |
+| `--datalake-url`, `--source-id`, `--kind`, `--field`, `--train-start`, `--train-end` | 未设置 | 启动时从数据湖拟合新基线（前四个必须一起给） |
 | `--max-train-points`, `--max-series` | `200000`, `64` | 训练时最多读取的点数；检测器最大数量 |
 | `--token-file`, `HYDRA_UMC_ANOMALY_TOKEN` | 无令牌 | API 的 Bearer 令牌 |
 | `HYDRA_UMC_ANOMALY_PROTECT_READS` | 设置了令牌就受保护 | `0` 开放 `POST /detect`，`1` 保护它 |

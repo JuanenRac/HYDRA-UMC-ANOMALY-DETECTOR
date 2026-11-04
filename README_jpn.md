@@ -19,7 +19,7 @@ GPL-3.0-or-later - see LICENSE
   <img src="https://img.shields.io/badge/Tech-Python%20%2F%20NumPy-blueviolet.svg" alt="Tech">
   <img src="https://img.shields.io/badge/Method-FFT%20%2F%20Spectrogram-orange.svg" alt="Method">
   <img src="https://img.shields.io/badge/Tests-266%20passing-2ea44f.svg" alt="Tests">
-  <img src="https://img.shields.io/badge/Version-0.2.1-0f6cbd.svg" alt="Version">
+  <img src="https://img.shields.io/badge/Version-0.2.2-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-functional-0F6CBD.svg" alt="Maturity">
 </p>
 
@@ -35,7 +35,7 @@ GPL-3.0-or-later - see LICENSE
 
 | | |
 |---|---|
-| バージョン | `0.2.1` |
+| バージョン | `0.2.2` |
 | 成熟度 | 機能する |
 | テスト | 266 (`python -m pytest -q tests`) |
 | 技術 | Python / FFT / statistical baseline detection |
@@ -152,7 +152,7 @@ flowchart TB
 | `--addr`, `--port` | `127.0.0.1`, `8097` | HTTP API の待ち受け先 |
 | `--sample-rate`, `--threshold` | `1000.0`, `10.0` | サンプリング周波数（Hz）、ビンが取りうる最大の z スコア |
 | `--window`, `--window-size` | `none` | FFT の前に `none` か `hann`、窓あたりのサンプル数（`--datalake-url` と併用で必須） |
-| `--datalake-url`, `--source-id`, `--kind`, `--field`, `--train-start`, `--train-end` / `--train-before` | 未設定 | 起動時にデータレイクから新しいベースラインを作る（最初の 4 つはセット） |
+| `--datalake-url`, `--source-id`, `--kind`, `--field`, `--train-start`, `--train-end` | 未設定 | 起動時にデータレイクから新しいベースラインを作る（最初の 4 つはセット） |
 | `--max-train-points`, `--max-series` | `200000`, `64` | 学習で読む最大点数、検知器の最大数 |
 | `--token-file`, `HYDRA_UMC_ANOMALY_TOKEN` | トークンなし | API の Bearer トークン |
 | `HYDRA_UMC_ANOMALY_PROTECT_READS` | トークンがあれば保護 | `0` で `POST /detect` を開放、`1` で保護 |

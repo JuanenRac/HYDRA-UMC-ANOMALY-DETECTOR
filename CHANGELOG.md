@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+## [0.2.2] - An exclusive end for the training window: --train-before (and before in DatalakeClient.query, fetchwindows and fetchwindowschecked) reads the half-open window [start, before) that the data lake already understands, so the... (and 2 more changes)
+
 - **An exclusive end for the training window:** `--train-before` (and `before` in `DatalakeClient.query`, `fetch_windows` and `fetch_windows_checked`) reads the half-open window `[start, before)` that the data lake already understands, so the point on the boundary between two shifts or two days is never counted twice; `--train-end` stays inclusive and sending both is refused. 4 new tests on the edge, with a fake data lake that applies `before` like the real one.
 
 - **A uniform `GET /health`, closed by default:** `serve --health-open` (or `HYDRA_UMC_ANOMALY_DETECTOR_HEALTH_OPEN=1`) makes the service answer `GET /health` with `{"status": "ok", "service": ..., "version": ...}`, the same body in every service of the family, so a watchdog reads the health of any of them the same way. Without the switch the route answers `404` like a route that does not exist. A caller that is not on loopback must present the bearer token of the service (a service started without a token never answers one). The body carries no path, configuration or secret; the health path the manifest declares does not change.
