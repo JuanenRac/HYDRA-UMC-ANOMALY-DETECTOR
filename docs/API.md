@@ -210,6 +210,8 @@ reported once (`note: "not fitted"` in `GET /stats`) and scored as soon as it ha
   "lookbackWindows": 2,
   "gapTolerance": 0.5,
   "topicPrefix": "hydra/anomaly",
+  "publishVerdicts": false,
+  "suspectRatio": 0.8,
   "mqtt": {"host": "127.0.0.1", "port": 1883, "clientId": "hydra-umc-anomaly-detector", "tls": false, "caFile": null,
            "usernameFile": null, "passwordFile": null, "allowPlaintext": false, "timeoutSeconds": 5},
   "series": [{"sourceId": "spindle-1", "kind": "vibration", "field": "value", "windowSize": 512}]
@@ -227,6 +229,11 @@ Only `datalake.url` and `series` are required. The DATALAKE tokens come from the
   `.../alarm` (not retained). The message holds `sourceId`, `kind`, `field`, `timestamp`, `score`, `threshold`, `anomalous` and `modelVersion`.
   A broker that is not on this machine needs `tls`, or `allowPlaintext` to say on purpose that plain text is fine; the user name and password
   are read from files.
+* **Verdicts for the server** (`publishVerdicts`, off by default; needs `mqtt`): whenever the verdict of a series changes (the first one counts) a *retained*
+  `anomaly-verdict/1` message is left at `<topicPrefix>/verdict/<sourceId>/<kind>/<field>`:
+  `{"schema": "anomaly-verdict/1", "source_id", "kind", "field", "verdict", "score", "threshold", "model_version", "timestamp"}`. `verdict` is `anomalous`
+  when the window is over the threshold, `suspect` when its score is at `suspectRatio` (0.1 to 1, default 0.8) of the threshold or more, and `normal`
+  otherwise. HYDRA-UMC-SERVER reads these messages, keeps the latest verdict of each series and can tell the voice interface about a change.
 * **`GET /stats`** gains a `follower` object: passes, windows scored, anomalies, DATALAKE / write / MQTT errors, and per series the last score,
   state and note. A DATALAKE or broker that cannot be reached is counted and tried again at the next pass.
 

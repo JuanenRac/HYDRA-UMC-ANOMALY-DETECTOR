@@ -235,6 +235,57 @@ def test_an_anomalous_window_is_flagged_written_and_announced_over_mqtt():
         assert follower.snapshot()["anomalies"] == 1
 
 
+def test_the_verdict_levels_and_the_message_of_the_contract():
+    from hydra_umc_anomaly_detector.follower import verdict_message, verdict_of
+
+    assert verdict_of(0.5, 1.0, False) == "normal"
+    assert verdict_of(0.8, 1.0, False) == "suspect"
+    assert verdict_of(0.79, 1.0, False) == "normal"
+    assert verdict_of(0.6, 1.0, False, suspect_ratio=0.5) == "suspect"
+    assert verdict_of(2.0, 1.0, True) == "anomalous"
+    assert verdict_of(5.0, None, False) == "normal"   # no threshold, nothing to compare with
+
+    class V:
+        score, threshold, model_version = 0.9, 1.0, 3
+
+    message = json.loads(verdict_message(KEY, 123, "suspect", V))
+    assert message == {"schema": "anomaly-verdict/1", "source_id": "motor-1", "kind": "vibration", "field": "value", "verdict": "suspect",
+                       "score": 0.9, "threshold": 1.0, "model_version": 3, "timestamp": 123}
+
+
+def test_verdicts_are_published_retained_only_when_asked_and_only_on_a_change():
+    with running_fake_datalake() as (url, datalake), broker() as mqtt:
+        values = _sine(50.0, 0, WINDOW) + _sine(50.0, 0, WINDOW) + [a + b for a, b in zip(_sine(50.0, 0, WINDOW), _sine(220.0, 0, WINDOW, 3.0), strict=False)] + _sine(50.0, 0, WINDOW)
+        datalake.points = _points(values, 20_000)
+        config = _config(url, mqtt={"host": "127.0.0.1", "port": mqtt.port}, publishVerdicts=True)
+        follower = Follower(config, _registry_with_fitted_series(), DatalakeClient(url), sample_rate=RATE, publisher=MqttPublisher(config.mqtt), clock=lambda: 20.0)
+        assert follower.tick() == 4
+        mqtt.wait_for(7)
+        verdicts = [(t, json.loads(m)["verdict"], retain) for t, m, retain in mqtt.messages if "/verdict/" in t]
+        topic = "hydra/anomaly/verdict/motor-1/vibration/value"
+        assert verdicts == [(topic, "normal", True), (topic, "anomalous", True), (topic, "normal", True)]
+        assert json.loads(next(m for t, m, _ in mqtt.messages if "/verdict/" in t))["schema"] == "anomaly-verdict/1"
+
+
+def test_without_the_switch_no_verdict_message_is_published():
+    with running_fake_datalake() as (url, datalake), broker() as mqtt:
+        datalake.points = _points(_sine(50.0, 0, WINDOW * 2), 20_000)
+        config = _config(url, mqtt={"host": "127.0.0.1", "port": mqtt.port})
+        assert config.publish_verdicts is False
+        follower = Follower(config, _registry_with_fitted_series(), DatalakeClient(url), sample_rate=RATE, publisher=MqttPublisher(config.mqtt), clock=lambda: 20.0)
+        assert follower.tick() == 2
+        mqtt.wait_for(1)
+        assert not any("/verdict/" in t for t, _, _ in mqtt.messages)
+
+
+def test_the_suspect_ratio_must_be_a_share_of_the_threshold():
+    base = {"datalake": {"url": "http://127.0.0.1:1"}, "series": [{"sourceId": "m", "kind": "vibration", "field": "value", "windowSize": 64}]}
+    assert parse_follow_config({**base, "suspectRatio": 0.5}).suspect_ratio == 0.5
+    for bad in (0.0, 1.5, "high"):
+        with pytest.raises(FollowConfigError):
+            parse_follow_config({**base, "suspectRatio": bad})
+
+
 def test_a_series_nobody_fitted_is_reported_and_scored_once_it_is():
     with running_fake_datalake() as (url, datalake):
         datalake.points = _points(_sine(50.0, 0, WINDOW), 30_000)

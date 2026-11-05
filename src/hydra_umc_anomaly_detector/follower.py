@@ -14,7 +14,9 @@ about (`--follow-config FILE`, everything tuned lives in that file):
   * each verdict is written back as a sample of kind `scoreKind` (default `anomaly_score`) with the fields `<field>` (the score),
     `<field>_anomalous` (0 or 1) and `<field>_model` (the model version), timestamped with the last sample of the window;
   * a series that changes state (healthy -> anomalous or back) publishes a retained message to `<topicPrefix>/<sourceId>/<kind>/<field>/state`,
-    and every anomalous window publishes `.../alarm`, over MQTT, when `mqtt` is configured.
+    and every anomalous window publishes `.../alarm`, over MQTT, when `mqtt` is configured;
+  * with `publishVerdicts` on, the verdict of a series (`normal`, `suspect` or `anomalous`) is also left as a retained `anomaly-verdict/1` message
+    at `<topicPrefix>/verdict/<sourceId>/<kind>/<field>` whenever it changes (the first verdict counts), for the server to read and relay.
 
 A DATALAKE or broker that cannot be reached never stops the loop: the failure is counted, shown in `GET /stats` and tried again next time.
 """
@@ -36,6 +38,8 @@ from .registry import DetectorRegistry, RegistryError, SeriesKey, parse_key
 DEFAULT_INTERVAL_S = 5.0
 DEFAULT_MAX_WINDOWS_PER_TICK = 20
 DEFAULT_TOPIC_PREFIX = "hydra/anomaly"
+VERDICT_SCHEMA = "anomaly-verdict/1"
+DEFAULT_SUSPECT_RATIO = 0.8   # a score from this share of the threshold up, but not over it, is "suspect"
 
 
 class FollowConfigError(ValueError):
@@ -60,6 +64,8 @@ class FollowConfig:
     gap_tolerance: float = 0.5
     mqtt: MqttTarget | None = None
     topic_prefix: str = DEFAULT_TOPIC_PREFIX
+    publish_verdicts: bool = False
+    suspect_ratio: float = DEFAULT_SUSPECT_RATIO
     fleet: FleetConfig = FleetConfig()
     maintenance: MaintenanceConfig = MaintenanceConfig()
 
@@ -165,6 +171,8 @@ def parse_follow_config(raw: object) -> FollowConfig:
         gap_tolerance=float(_number(raw, "gapTolerance", 0.5, 0.0, 0.99)),
         mqtt=mqtt_target,
         topic_prefix=topic_prefix,
+        publish_verdicts=bool(raw.get("publishVerdicts", False)),
+        suspect_ratio=float(_number(raw, "suspectRatio", DEFAULT_SUSPECT_RATIO, 0.1, 1.0)),
         fleet=fleet,
         maintenance=maintenance,
     )
@@ -179,10 +187,28 @@ def load_follow_config(path: str) -> tuple[FollowConfig, dict]:
     return parse_follow_config(raw), raw
 
 
+def verdict_of(score: float, threshold: float | None, anomalous: bool, suspect_ratio: float = DEFAULT_SUSPECT_RATIO) -> str:
+    """normal, suspect or anomalous: a window over the threshold is anomalous; one at `suspect_ratio` of it or more is suspect."""
+    if anomalous:
+        return "anomalous"
+    if threshold is not None and threshold > 0 and score >= suspect_ratio * threshold:
+        return "suspect"
+    return "normal"
+
+
+def verdict_message(key: SeriesKey, timestamp: int, name: str, verdict) -> bytes:
+    """The `anomaly-verdict/1` message of a series (the snake_case names of the contract the server reads)."""
+    return json.dumps({
+        "schema": VERDICT_SCHEMA, "source_id": key.source_id, "kind": key.kind, "field": key.field, "verdict": name,
+        "score": verdict.score, "threshold": verdict.threshold, "model_version": verdict.model_version, "timestamp": timestamp,
+    }).encode("utf-8")
+
+
 @dataclass
 class SeriesState:
     cursor: int | None = None  # timestamp (ms) of the last sample already used
     anomalous: bool | None = None
+    verdict: str | None = None  # normal | suspect | anomalous, as last published
     last_score: float | None = None
     last_timestamp: int | None = None
     windows_scored: int = 0
@@ -336,6 +362,10 @@ class Follower:
                 self._warn_once(key, "write", f"cannot write the verdict of {key.source_id}/{key.kind}/{key.field}: {error}")
             else:
                 self._warned.discard((key, "write"))
+        verdict_name = verdict_of(verdict.score, verdict.threshold, verdict.anomalous, self.config.suspect_ratio)
+        with self._lock:
+            verdict_changed = st.verdict != verdict_name
+            st.verdict = verdict_name
         if self.publisher is not None:
             message = json.dumps({
                 "sourceId": key.source_id, "kind": key.kind, "field": key.field, "timestamp": timestamp, "score": verdict.score,
@@ -343,6 +373,11 @@ class Follower:
             }).encode("utf-8")
             base = f"{self.config.topic_prefix}/{key.source_id}/{key.kind}/{key.field}"
             try:
+                if self.config.publish_verdicts and verdict_changed:
+                    self.publisher.publish(
+                        f"{self.config.topic_prefix}/verdict/{key.source_id}/{key.kind}/{key.field}",
+                        verdict_message(key, timestamp, verdict_name, verdict), retain=True,
+                    )
                 if changed or first:
                     self.publisher.publish(f"{base}/state", message, retain=True)
                 if verdict.anomalous:
