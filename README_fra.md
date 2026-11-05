@@ -118,6 +118,7 @@ flowchart TB
 * 📐 **Métriques précision/rappel :** Precision/recall/F1 réels, calculés sur un jeu de données étiqueté (`metrics.py`), pas seulement des affirmations en prose sur la séparation des scores. *(implémenté)*
 * 📈 **Détection de dérive simulée :** `DriftMonitor` signale une élévation soutenue réelle de la moyenne glissante, distincte du propre signal d'anomalie d'une seule fenêtre. *(implémenté)*
 * 🩺 **Un `GET /health` uniforme, fermé par défaut :** `serve --health-open` (ou `HYDRA_UMC_ANOMALY_DETECTOR_HEALTH_OPEN=1`) fait répondre le service à `GET /health` par `{"status": "ok", "service": ..., "version": ...}`, le même corps dans chaque service de la famille ; sans l'interrupteur la route répond `404` comme une route inexistante. Un appelant hors loopback doit présenter le jeton bearer du service, et le corps ne contient ni chemin, ni configuration, ni secret.
+* 🪪 **L'identité de HYDRA-UMC-SERVER, désactivée par défaut :** `--identity-key-file FICHIER` (ou `HYDRA_UMC_ANOMALY_DETECTOR_IDENTITY_KEY_FILE=FICHIER`) fait accepter au service le jeton signé que le serveur émet à la connexion, en plus de son propre jeton : un lecteur peut consulter mais pas modifier, et une requête sans justificatif est refusée même en loopback. Sans l'interrupteur, rien ne change.
 
 Une base de référence demande au moins dix fenêtres saines et utilise l'écart type d'échantillon (`ddof=1`) ; le seuil d'alarme ne change pas, donc une vraie anomalie n'est pas masquée. Les bases enregistrées auparavant continuent de fonctionner telles quelles.
 

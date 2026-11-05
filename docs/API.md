@@ -16,6 +16,8 @@ hydra-umc-anomaly-detector --addr 127.0.0.1 --port 8097
 
 All responses are `application/json`. Without a token there is no authentication on any endpoint, which is why a non-loopback `--addr` is refused unless a token is set (`--token-file` or `HYDRA_UMC_ANOMALY_TOKEN`, at least 16 characters): with one, every route but `GET /stats` demands `Authorization: Bearer <token>` (reads too, unless `--no-protect-reads`). `POST /baseline/fit` would otherwise let anyone reachable overwrite the statistical baseline this detector compares real readings against.
 
+`--identity-key-file FILE` (or `HYDRA_UMC_ANOMALY_DETECTOR_IDENTITY_KEY_FILE`; off by default) accepts the signed token of HYDRA-UMC-SERVER next to the token of the service: a viewer may read but not change, and a request with no credential is refused even on loopback, `GET /health` and `GET /stats` included. A container health check then runs `python -m hydra_umc_anomaly_detector.server_identity probe --port PORT --key-file FILE`, which presents a short-lived token signed with the same key file.
+
 Every JSON request body is limited to 1 MiB. Missing, negative, malformed or
 oversized `Content-Length` values are rejected with `400` before JSON parsing.
 

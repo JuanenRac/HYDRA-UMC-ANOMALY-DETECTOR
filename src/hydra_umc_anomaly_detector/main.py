@@ -28,6 +28,7 @@ from pathlib import Path
 
 from . import __version__
 from .health_route import health_open_requested
+from .server_identity import identity_key_from
 from .api import DetectorServer
 from .baseline import BaselineError, load_baseline, save_baseline
 from .datalake_client import DatalakeClient, DatalakeError, fetch_windows_checked
@@ -140,6 +141,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--baseline-dir", default=None, help="Persist the baseline of each series (POST /detectors/{sourceId}/{kind}/{field}/fit) in this directory and restore them on startup.")
     parser.add_argument("--max-series", type=int, default=DEFAULT_MAX_DETECTORS, help="most series that may have a detector of their own at once (default %(default)s)")
     parser.add_argument("--token-file", default=None, help="file with a bearer token demanded by POST /baseline/fit, /drift/init and /drift/observe (or the HYDRA_UMC_ANOMALY_TOKEN environment variable). Needed to bind a non-loopback address.")
+    parser.add_argument("--identity-key-file", default=None, help="file with the signing key of HYDRA-UMC-SERVER (its JWT_SECRET): a valid token of the SERVER is then accepted, every route (GET /health and GET /stats too) demands an identity and a viewer may read but not change (off by default; or set HYDRA_UMC_ANOMALY_DETECTOR_IDENTITY_KEY_FILE)")
     parser.add_argument("--protect-reads", dest="protect_reads", action="store_true", default=None, help="POST /detect demands the token too (only GET /stats stays open). This is the default whenever a token is set; HYDRA_UMC_ANOMALY_PROTECT_READS=1 does the same and, unlike the default, refuses to start without a token")
     parser.add_argument("--no-protect-reads", dest="protect_reads", action="store_false", help="leave POST /detect open even though a token is set (HYDRA_UMC_ANOMALY_PROTECT_READS=0 does the same)")
     parser.add_argument("--rul", action="store_true", default=False, help="turn on POST /rul, the days until the trend of a list of scores reaches a limit (off by default); can also be set in --detector-config")
@@ -195,7 +197,12 @@ def main(argv: list[str] | None = None) -> int:
         loopback = args.addr == "localhost" or ipaddress.ip_address(args.addr).is_loopback
     except ValueError:
         loopback = False
-    if not loopback and not token:
+    try:
+        identity_key = identity_key_from(args.identity_key_file)
+    except ValueError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 2
+    if not loopback and not token and identity_key is None:
         print(f"error: --addr {args.addr} is not loopback: set --token-file (or HYDRA_UMC_ANOMALY_TOKEN) so the baseline cannot be replaced by anyone who reaches the port", file=sys.stderr)
         return 2
 
@@ -252,12 +259,14 @@ def main(argv: list[str] | None = None) -> int:
             protect_reads = True
         elif env_value == "0":
             protect_reads = False
-    if protect_reads and not token:
+    if protect_reads and not token and identity_key is None:
         print("error: --protect-reads needs a token (--token-file or HYDRA_UMC_ANOMALY_TOKEN)", file=sys.stderr)
         return 2
     if protect_reads is None:
         # Default: reads are protected whenever there is a token to demand; without one (loopback only) there is nothing to check.
-        protect_reads = bool(token)
+        protect_reads = bool(token) or identity_key is not None
+    if identity_key is not None:
+        protect_reads = True  # with the identity of the SERVER on, nothing is open
     if args.max_series < 1:
         print("error: --max-series must be at least 1", file=sys.stderr)
         return 2
@@ -272,6 +281,7 @@ def main(argv: list[str] | None = None) -> int:
     for problem in problems:
         print(f"[anomaly-detector] WARNING: could not restore a series: {problem}", file=sys.stderr)
     server = DetectorServer((args.addr, args.port), detector, baseline_path, token=token, protect_reads=protect_reads, registry=registry, rul_enabled=bool(args.rul), rul_min_points=args.rul_min_points, diagnosis=diagnosis_settings, order_tracking=order_settings)
+    server.identity_key = identity_key
     follower_stop = None
     if args.follow_config:
         try:
@@ -301,7 +311,7 @@ def main(argv: list[str] | None = None) -> int:
               f" (verdicts {'written back as ' + follow_config.score_kind if follow_config.write_scores else 'not written back'}, alarms {'over MQTT' if publisher else 'not published'})")
     print(f"[anomaly-detector] HTTP API listening on {args.addr}:{args.port} "
           f"(sample_rate={args.sample_rate}Hz, threshold={args.threshold}sigma, window={args.window}, "
-          f"{'reads and writes' if protect_reads else 'writes'} {'need a token' if token else 'open (loopback only)'})")
+          f"{'reads and writes' if protect_reads else 'writes'} {'need a token' if token else 'open (loopback only)'}{'; tokens of HYDRA-UMC-SERVER accepted, nothing is open' if identity_key is not None else ''})")
     print("[anomaly-detector] POST /baseline/fit, POST /detect, GET /stats; one detector per series: POST /detectors/{sourceId}/{kind}/{field}/fit|detect|drift/init|drift/observe, GET /detectors")
     try:
         server.health_open = health_open_requested(args.health_open)

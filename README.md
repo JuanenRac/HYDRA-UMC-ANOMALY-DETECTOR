@@ -118,6 +118,7 @@ flowchart TB
 * 📐 **Precision/Recall Metrics:** Real, computed precision/recall/F1 over a labeled fixture (`metrics.py`), not just prose claims about score separation. *(implemented)*
 * 📈 **Simulated Drift Detection:** `DriftMonitor` flags a real, sustained rolling-mean elevation distinct from any single window's own anomaly flag. *(implemented)*
 * 🩺 **A uniform `GET /health`, closed by default:** `serve --health-open` (or `HYDRA_UMC_ANOMALY_DETECTOR_HEALTH_OPEN=1`) makes the service answer `GET /health` with `{"status": "ok", "service": ..., "version": ...}`, the same body in every service of the family; without the switch the route answers `404` like a route that does not exist. A caller that is not on loopback must present the bearer token of the service, and the body carries no path, configuration or secret.
+* 🪪 **The identity of HYDRA-UMC-SERVER, off by default:** `--identity-key-file FILE` (or `HYDRA_UMC_ANOMALY_DETECTOR_IDENTITY_KEY_FILE=FILE`) makes the service accept the signed token that the server issues at login, next to its own token: a viewer may read but not change, and a request with no credential is refused even on loopback. Without the switch nothing changes.
 
 A baseline needs at least ten healthy windows and uses the sample standard deviation (`ddof=1`); the alarm threshold is unchanged, so a real anomaly is not hidden. Baselines saved earlier keep working as they are.
 

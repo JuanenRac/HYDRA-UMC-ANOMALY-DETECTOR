@@ -118,6 +118,7 @@ flowchart TB
 * 📐 **Métricas de Precisión/Recall:** Precision/recall/F1 reales, calculados sobre un fixture etiquetado (`metrics.py`), no solo afirmaciones en prosa sobre la separación de puntuaciones. *(implementado)*
 * 📈 **Detección de Deriva Simulada:** `DriftMonitor` señala una elevación sostenida real de la media móvil, distinta de la propia marca de anomalía de cualquier ventana individual. *(implementado)*
 * 🩺 **Un `GET /health` uniforme, cerrado por defecto:** `serve --health-open` (o `HYDRA_UMC_ANOMALY_DETECTOR_HEALTH_OPEN=1`) hace que el servicio responda a `GET /health` con `{"status": "ok", "service": ..., "version": ...}`, el mismo cuerpo en todos los servicios de la familia; sin el interruptor la ruta responde `404` como una ruta que no existe. Quien no esté en loopback debe presentar el token bearer del servicio, y el cuerpo no contiene rutas, configuración ni secretos.
+* 🪪 **La identidad de HYDRA-UMC-SERVER, desactivada por defecto:** `--identity-key-file FICHERO` (o `HYDRA_UMC_ANOMALY_DETECTOR_IDENTITY_KEY_FILE=FICHERO`) hace que el servicio acepte el token firmado que el servidor emite al iniciar sesión, junto a su propio token: un visor puede leer pero no cambiar, y una petición sin credencial se rechaza incluso en loopback. Sin el interruptor no cambia nada.
 
 Una línea base necesita al menos diez ventanas sanas y usa la desviación típica muestral (`ddof=1`); el umbral de alarma no cambia, así que una anomalía real no queda oculta. Las líneas base guardadas antes siguen funcionando tal cual.
 

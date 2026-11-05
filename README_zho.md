@@ -119,6 +119,7 @@ flowchart TB
 * 📐 **精确率/召回率指标：** 基于标注测试样本（`metrics.py`）计算得到的真实 precision/recall/F1，而非仅是关于分数分离度的文字描述。*(已实现)*
 * 📈 **模拟漂移检测：** `DriftMonitor` 标记出真实的、持续的滚动均值抬升，这与任何单一窗口自身的异常标记不同。*(已实现)*
 * 🩺 **统一的 `GET /health`，默认关闭：** `serve --health-open`（或 `HYDRA_UMC_ANOMALY_DETECTOR_HEALTH_OPEN=1`）使服务以 `{"status": "ok", "service": ..., "version": ...}` 响应 `GET /health`，家族中每个服务的响应体相同；没有该开关时，该路由像不存在的路由一样返回 `404`。非回环地址的调用方必须出示服务的 bearer 令牌，响应体不含路径、配置或密钥。
+* 🪪 **HYDRA-UMC-SERVER 的身份（默认关闭）：** `--identity-key-file 文件`（或 `HYDRA_UMC_ANOMALY_DETECTOR_IDENTITY_KEY_FILE=文件`）会让服务在自己的令牌之外，也接受服务器在登录时签发的已签名令牌：查看者只能读取而不能更改，没有凭据的请求即使在环回地址上也会被拒绝。不开启该开关时一切照旧。
 
 基线至少需要十个健康窗口，并使用样本标准差（`ddof=1`）；报警阈值不变，因此真正的异常不会被掩盖。之前保存的基线仍可原样使用。
 

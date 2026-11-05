@@ -21,6 +21,7 @@ from urllib.parse import unquote, urlparse
 
 from . import __version__
 from .health_route import HealthRouteMixin
+from .server_identity import accepts
 from .service_metrics import MetricsHandlerMixin
 from .baseline import BaselineError, save_baseline
 from .detector import AnomalyDetector, NotFittedError
@@ -66,6 +67,8 @@ def _reject_json_constant(name: str) -> float:
 def _authorized(handler: Handler) -> bool:
     """Operations that change the model or the drift monitor need the bearer token when the server has one."""
     expected = handler.server.token
+    if handler.server.identity_key is not None:
+        return accepts(handler, expected or "", handler.server.identity_key)  # the identity of HYDRA-UMC-SERVER is on: nothing is open
     if not expected:
         return True
     scheme, _, presented = handler.headers.get("Authorization", "").partition(" ")
@@ -368,6 +371,9 @@ class Handler(HealthRouteMixin, MetricsHandlerMixin, BaseHTTPRequestHandler):
         if self.serve_metrics(authorized=(not self.server.protect_reads) or _authorized(self)):
             return
         path = urlparse(self.path).path
+        if path == "/stats" and self.server.identity_key is not None and not _authorized(self):
+            _write_json(self, 401, {"error": "a valid identity is required"})  # with the identity on, not even the health path is open
+            return
         if path == "/stats":
             with self.server.lock:
                 fitted = self.server.detector.is_fitted
@@ -399,6 +405,7 @@ class DetectorServer(ThreadingHTTPServer):
     connection) is not safe to touch from multiple threads at once under
     ThreadingHTTPServer without one."""
     health_open: bool = False  # GET /health answers only when the operator opens it (health_route.py)
+    identity_key: bytes | None = None  # the signing key of HYDRA-UMC-SERVER, when the operator turned its identity on (server_identity.py)
 
     def __init__(
         self,
