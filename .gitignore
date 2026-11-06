@@ -9,3 +9,5 @@ dist/
 .env
 .env.*
 !.env.example
+# Coverage data written by the test runs
+.coverage
