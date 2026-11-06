@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+## [0.2.3] - The verdict of each series can be left for the server, off by default (publishVerdicts): when the verdict of a series changes (the first one counts) the follower publishes a retained anomaly-verdict/1 message at... (and 3 more changes)
+
 - **The verdict of each series can be left for the server, off by default (`publishVerdicts`):** when the verdict of a series changes (the first one counts) the follower publishes a retained `anomaly-verdict/1` message at `<topicPrefix>/verdict/<sourceId>/<kind>/<field>` with `normal`, `suspect` (the score is at `suspectRatio` of the threshold or more, 0.8 by default) or `anomalous`, so HYDRA-UMC-SERVER can keep the latest verdict of every series and tell the voice interface about a change. 4 new tests (275 in all).
 
 - **The build test of the repository compiles only on CI or when allowed:** for the stacks that compile (`rust`, `go`, `android`, `flutter`, `firmware-c`), `tools/build_test.py` prints `BUILD_TEST=SKIPPED` with exit status 2 on a plain PC, never a pass; `ALLOW_LOCAL_BUILD=1` allows it and a CI runner always may. The `python` and `node` stacks are not locked.
