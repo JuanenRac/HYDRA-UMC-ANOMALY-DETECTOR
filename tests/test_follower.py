@@ -402,3 +402,115 @@ def test_the_stats_route_shows_the_follower(tmp_path: Path):
         server.shutdown()
         server.server_close()
         thread.join(timeout=2)
+
+
+# ---------------------------------------------------------------- fit at start-up from a training range (off by default)
+def _train_config(url: str, **over) -> object:
+    series = [{"sourceId": KEY.source_id, "kind": KEY.kind, "field": KEY.field, "windowSize": WINDOW, "train": {"start": 0, "before": 6 * WINDOW}}]
+    return _config(url, series=series, **over)
+
+
+def _healthy_history(windows: int = 6) -> list[dict]:
+    return _points(_sine(50.0, 0, WINDOW * windows), 0)
+
+
+def test_fit_on_start_is_off_unless_the_configuration_turns_it_on():
+    with running_fake_datalake() as (url, datalake):
+        datalake.points = _healthy_history()
+        registry = DetectorRegistry(_factory)
+        follower = Follower(_train_config(url), registry, DatalakeClient(url), sample_rate=RATE, clock=lambda: 30.0, log=lambda _text: None)
+        assert _train_config(url).fit_on_start is False
+        assert follower.fit_missing() == 0 and registry.get(KEY) is None
+
+
+def test_a_series_without_a_baseline_is_fitted_from_its_own_training_range():
+    with running_fake_datalake() as (url, datalake):
+        datalake.points = _healthy_history() + _points(_sine(50.0, 0, WINDOW), 100_000)
+        registry = DetectorRegistry(_factory)
+        messages: list[str] = []
+        follower = Follower(_train_config(url, fitOnStart=True), registry, DatalakeClient(url), sample_rate=RATE, clock=lambda: 100.2, log=messages.append)
+        assert follower.fit_missing() == 1
+        entry = registry.get(KEY)
+        assert entry is not None and entry.detector.is_fitted and entry.detector.baseline.n_windows == 6
+        assert follower.snapshot()["fittedOnStart"] == 1 and follower.snapshot()["fitErrors"] == 0
+        assert any("fitted" in m for m in messages)
+        assert follower.fit_missing() == 0  # now it has one: left alone
+        assert follower.tick() == 1  # and it is scored
+
+
+def test_the_training_range_is_the_one_in_the_configuration():
+    with running_fake_datalake() as (url, datalake):
+        # healthy history in the range, then a different signal after it: the baseline must not learn the second one
+        datalake.points = _healthy_history() + _points(_sine(180.0, 0, 6 * WINDOW), 10_000)
+        registry = DetectorRegistry(_factory)
+        follower = Follower(_train_config(url, fitOnStart=True), registry, DatalakeClient(url), sample_rate=RATE, log=lambda _t: None)
+        assert follower.fit_missing() == 1
+        entry = registry.get(KEY)
+        assert entry.detector.score(_sine(50.0, 0)).anomalous is False
+        assert entry.detector.score(_sine(180.0, 0)).anomalous is True
+
+
+def test_a_series_that_already_has_a_baseline_is_not_refitted():
+    with running_fake_datalake() as (url, datalake):
+        datalake.points = _healthy_history()
+        registry = _registry_with_fitted_series()
+        before = registry.get(KEY).detector.model_version
+        follower = Follower(_train_config(url, fitOnStart=True), registry, DatalakeClient(url), sample_rate=RATE, log=lambda _t: None)
+        assert follower.fit_missing() == 0
+        assert registry.get(KEY).detector.model_version == before
+
+
+def test_a_range_that_cannot_be_fitted_is_reported_and_the_series_stays_unfitted():
+    with running_fake_datalake() as (url, datalake):
+        datalake.points = _points(_sine(50.0, 0, 2 * WINDOW), 0)  # too few windows for a baseline
+        registry = DetectorRegistry(lambda: AnomalyDetector(sample_rate=RATE, threshold=4.0, min_windows=10))
+        messages: list[str] = []
+        follower = Follower(_train_config(url, fitOnStart=True), registry, DatalakeClient(url), sample_rate=RATE, log=messages.append)
+        assert follower.fit_missing() == 0
+        assert registry.get(KEY) is None and follower.snapshot()["fitErrors"] == 1
+        assert any("cannot fit" in m for m in messages)
+
+
+def test_a_datalake_that_is_down_at_start_does_not_stop_the_follower():
+    registry = DetectorRegistry(_factory)
+    follower = Follower(_train_config("http://127.0.0.1:9", fitOnStart=True), registry, DatalakeClient("http://127.0.0.1:9"), sample_rate=RATE, log=lambda _t: None)
+    assert follower.fit_missing() == 0 and follower.snapshot()["fitErrors"] == 1
+    stop = threading.Event()
+    stop.set()
+    follower.run(stop)  # runs the fit, then returns at once
+
+
+def test_the_fit_is_saved_when_the_registry_has_a_baseline_directory(tmp_path):
+    with running_fake_datalake() as (url, datalake):
+        datalake.points = _healthy_history()
+        registry = DetectorRegistry(_factory, tmp_path)
+        follower = Follower(_train_config(url, fitOnStart=True), registry, DatalakeClient(url), sample_rate=RATE, log=lambda _t: None)
+        assert follower.fit_missing() == 1
+        again = DetectorRegistry(_factory, tmp_path)
+        restored, problems = again.restore_all()
+        assert restored == 1 and not problems  # a restart finds the baseline and fits nothing
+
+
+@pytest.mark.parametrize("change", [
+    {"fitOnStart": "yes"},
+    {"fitOnStart": True},  # on, but no series has a range
+    {"series": [{"sourceId": "a", "kind": "k", "field": "f", "windowSize": 64, "train": "x"}]},
+    {"series": [{"sourceId": "a", "kind": "k", "field": "f", "windowSize": 64, "train": {"end": 5}}]},
+    {"series": [{"sourceId": "a", "kind": "k", "field": "f", "windowSize": 64, "train": {"start": 0}}]},
+    {"series": [{"sourceId": "a", "kind": "k", "field": "f", "windowSize": 64, "train": {"start": 0, "end": 5, "before": 6}}]},
+    {"series": [{"sourceId": "a", "kind": "k", "field": "f", "windowSize": 64, "train": {"start": 9, "end": 5}}]},
+    {"series": [{"sourceId": "a", "kind": "k", "field": "f", "windowSize": 64, "train": {"start": 0, "before": 0}}]},
+    {"series": [{"sourceId": "a", "kind": "k", "field": "f", "windowSize": 64, "train": {"start": -1, "end": 5}}]},
+    {"series": [{"sourceId": "a", "kind": "k", "field": "f", "windowSize": 64, "train": {"start": 0, "end": 5, "maxPoints": 0}}]},
+    {"series": [{"sourceId": "a", "kind": "k", "field": "f", "windowSize": 64, "train": {"start": 0, "end": 5, "extra": 1}}]},
+])
+def test_a_bad_training_range_or_switch_is_refused(change):
+    with pytest.raises(FollowConfigError):
+        _config("http://127.0.0.1:8095", **change)
+
+
+def test_a_good_training_range_is_parsed_and_the_switch_stays_off_by_default():
+    config = _config("http://127.0.0.1:8095", series=[{"sourceId": "a", "kind": "k", "field": "f", "windowSize": 64, "train": {"start": 10, "end": 99, "maxPoints": 500}}])
+    assert config.fit_on_start is False
+    train = config.series[0].train
+    assert (train.start, train.end, train.before, train.max_points) == (10, 99, None, 500)

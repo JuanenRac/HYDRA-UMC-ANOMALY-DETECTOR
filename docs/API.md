@@ -212,15 +212,22 @@ reported once (`note: "not fitted"` in `GET /stats`) and scored as soon as it ha
   "topicPrefix": "hydra/anomaly",
   "publishVerdicts": false,
   "suspectRatio": 0.8,
+  "fitOnStart": false,
   "mqtt": {"host": "127.0.0.1", "port": 1883, "clientId": "hydra-umc-anomaly-detector", "tls": false, "caFile": null,
            "usernameFile": null, "passwordFile": null, "allowPlaintext": false, "timeoutSeconds": 5},
-  "series": [{"sourceId": "spindle-1", "kind": "vibration", "field": "value", "windowSize": 512}]
+  "series": [{"sourceId": "spindle-1", "kind": "vibration", "field": "value", "windowSize": 512,
+              "train": {"start": 1760000000000, "before": 1760086400000, "maxPoints": 200000}}]
 }
 ```
 
 Only `datalake.url` and `series` are required. The DATALAKE tokens come from the files named there, or from `HYDRA_UMC_DATALAKE_READ_TOKEN` /
 `HYDRA_UMC_DATALAKE_INGEST_TOKEN` / `HYDRA_UMC_DATALAKE_TOKEN` (each also as `..._FILE`). The detector's own `--sample-rate` is the rate of every series.
 
+* **A baseline at start-up** (`fitOnStart`, off by default): with it on, a series that has no baseline when the service starts (none restored from `--baseline-dir`, none fitted by hand)
+  is fitted from its own `train` range, the healthy history that is read from DATALAKE for it (`start` and exactly one of `end`, inclusive, or `before`, exclusive, in unix ms;
+  `maxPoints` caps the read, default 200000). The range is the operator's choice and is never moved: the follower does not refit on its own later, so a slow fault is not learnt as
+  normal. A series that already has a baseline is left alone, and one that cannot be fitted (DATALAKE down, fewer healthy windows than the baseline needs) is reported in the log and counted
+  in `GET /stats` (`fittedOnStart`, `fitErrors`) and stays "not fitted". With `fitOnStart` on, at least one series must have a `train` range.
 * **The verdict is written back** (`writeScores`) as a sample of kind `scoreKind` for the same `sourceId`, timestamped with the last sample of the window,
   with the fields `<field>` (the score), `<field>_anomalous` (0 or 1) and `<field>_model` (the model version). A failed write is counted and does not
   lose the verdict or stop the loop.

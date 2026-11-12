@@ -18,7 +18,7 @@ GPL-3.0-or-later - see LICENSE
   <img src="https://img.shields.io/badge/License-GPL%203.0--or--later-blue.svg" alt="GPL 3.0 or later">
   <img src="https://img.shields.io/badge/Tech-Python%20%2F%20NumPy-blueviolet.svg" alt="Tech">
   <img src="https://img.shields.io/badge/Method-FFT%20%2F%20Spectrogram-orange.svg" alt="Method">
-  <img src="https://img.shields.io/badge/Tests-388%20passing-2ea44f.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-407%20passing-2ea44f.svg" alt="Tests">
   <img src="https://img.shields.io/badge/Version-0.2.3-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-functional-0F6CBD.svg" alt="Maturity">
 </p>
@@ -37,7 +37,7 @@ GPL-3.0-or-later - see LICENSE
 |---|---|
 | Versión | `0.2.3` |
 | Madurez | Funcional |
-| Tests | 388 (`python -m pytest -q tests`) |
+| Tests | 407 (`python -m pytest -q tests`) |
 | Tecnología | Python / FFT / statistical baseline detection |
 | Destino | La Raspberry Pi CM5 de una celda HYDRA-UMC |
 | En hardware real | No aplica: nada de esto se ejecuta en hardware |
@@ -53,7 +53,7 @@ Cada línea es una parte de este repositorio y la luz dice hasta dónde llega ho
 | Área | Estado | Qué significa aquí |
 |---|---|---|
 | Software | 🟡 | Funciona para su propósito principal; la comprobación de honestidad de arriba lista lo que aún falta |
-| Pruebas | 🟢 | 388 pruebas automáticas, ejecutadas en cada cambio |
+| Pruebas | 🟢 | 407 pruebas automáticas, ejecutadas en cada cambio |
 | Hardware real | 🟢 | No aplica: nada de esto se ejecuta en hardware |
 | Interfaz y protocolos | 🟡 | Las rutas o los mensajes que ofrece están documentados y probados con un cliente; aún no los han usado todos los clientes |
 | Integración | 🟡 | Funciona junto con los demás servicios en el banco de pruebas de la CM5 y sus mensajes siguen los contratos compartidos del SDK |
@@ -171,7 +171,7 @@ curl http://127.0.0.1:8097/stats
 
 ## 🧪 Pruebas
 
-388 pruebas automáticas se ejecutan con `python -m pytest -q tests`. Usan señales realistas, comprobaciones de falsos positivos y un data lake simulado; sin hardware ni red externa.
+407 pruebas automáticas se ejecutan con `python -m pytest -q tests`. Usan señales realistas, comprobaciones de falsos positivos y un data lake simulado; sin hardware ni red externa.
 
 | Fichero de pruebas | Pruebas | Qué cubre |
 |---|---|---|

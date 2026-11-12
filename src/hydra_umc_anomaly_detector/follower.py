@@ -30,7 +30,8 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
-from .datalake_client import DatalakeClient, DatalakeError, split_runs
+from .baseline import BaselineError, save_baseline
+from .datalake_client import DatalakeClient, DatalakeError, fetch_windows_checked, split_runs
 from .fleet import FleetConfig, FleetConfigError, FleetTracker, MaintenanceConfig, parse_fleet_config, parse_maintenance_config
 from .mqtt_publish import MqttError, MqttPublisher, MqttTarget
 from .registry import DetectorRegistry, RegistryError, SeriesKey, parse_key
@@ -47,9 +48,20 @@ class FollowConfigError(ValueError):
 
 
 @dataclass(frozen=True)
+class TrainRange:
+    """The healthy history DATALAKE is read for when a series has no baseline at start-up (unix ms). `end` is inclusive, `before` exclusive."""
+
+    start: int
+    end: int | None = None
+    before: int | None = None
+    max_points: int = 200_000
+
+
+@dataclass(frozen=True)
 class SeriesConfig:
     key: SeriesKey
     window_size: int
+    train: TrainRange | None = None
 
 
 @dataclass(frozen=True)
@@ -68,6 +80,8 @@ class FollowConfig:
     suspect_ratio: float = DEFAULT_SUSPECT_RATIO
     fleet: FleetConfig = FleetConfig()
     maintenance: MaintenanceConfig = MaintenanceConfig()
+    # off by default: with it on, a series that has no baseline at start-up is fitted from its own `train` range (see `Follower.fit_missing`)
+    fit_on_start: bool = False
 
 
 def _is_loopback(host: str) -> bool:
@@ -99,6 +113,34 @@ def _number(raw: dict, key: str, default: float, minimum: float, maximum: float,
     return value
 
 
+def _whole(value: object, label: str, minimum: int = 0) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or value < minimum:
+        raise FollowConfigError(f"{label} must be a whole number of at least {minimum}")
+    return value
+
+
+def _parse_train(item: dict, label: str) -> TrainRange | None:
+    raw = item.get("train")
+    if raw is None:
+        return None
+    if not isinstance(raw, dict):
+        raise FollowConfigError(f"{label}.train must be an object")
+    unknown = sorted(set(raw) - {"start", "end", "before", "maxPoints"})
+    if unknown:
+        raise FollowConfigError(f"{label}.train has unknown keys: {', '.join(unknown)}")
+    if "start" not in raw:
+        raise FollowConfigError(f"{label}.train.start is required (unix ms)")
+    start = _whole(raw["start"], f"{label}.train.start")
+    if ("end" in raw) == ("before" in raw):
+        raise FollowConfigError(f"{label}.train needs exactly one of end (inclusive) or before (exclusive)")
+    end = _whole(raw["end"], f"{label}.train.end") if "end" in raw else None
+    before = _whole(raw["before"], f"{label}.train.before") if "before" in raw else None
+    if (end if end is not None else before - 1) < start:  # type: ignore[operator]
+        raise FollowConfigError(f"{label}.train ends before it starts")
+    max_points = _whole(raw.get("maxPoints", 200_000), f"{label}.train.maxPoints", 1)
+    return TrainRange(start=start, end=end, before=before, max_points=max_points)
+
+
 def parse_follow_config(raw: object) -> FollowConfig:
     if not isinstance(raw, dict):
         raise FollowConfigError("the configuration must be a JSON object")
@@ -121,7 +163,12 @@ def parse_follow_config(raw: object) -> FollowConfig:
             raise FollowConfigError(f"series[{index}].windowSize must be a whole number from 8 to 65536")
         if any(existing.key == key for existing in series):
             raise FollowConfigError(f"series[{index}] repeats {key.source_id}/{key.kind}/{key.field}")
-        series.append(SeriesConfig(key, window_size))
+        series.append(SeriesConfig(key, window_size, _parse_train(item, f"series[{index}]")))
+    fit_on_start = raw.get("fitOnStart", False)
+    if not isinstance(fit_on_start, bool):
+        raise FollowConfigError("fitOnStart must be true or false")
+    if fit_on_start and not any(s.train is not None for s in series):
+        raise FollowConfigError("fitOnStart is on but no series has a train range (series[].train.start with end or before)")
     score_kind = raw.get("scoreKind", "anomaly_score")
     try:
         score_kind = parse_key("x", score_kind, "x").kind
@@ -175,6 +222,7 @@ def parse_follow_config(raw: object) -> FollowConfig:
         suspect_ratio=float(_number(raw, "suspectRatio", DEFAULT_SUSPECT_RATIO, 0.1, 1.0)),
         fleet=fleet,
         maintenance=maintenance,
+        fit_on_start=fit_on_start,
     )
 
 
@@ -224,6 +272,8 @@ class FollowerStats:
     write_errors: int = 0
     mqtt_errors: int = 0
     not_fitted: int = 0
+    fitted_on_start: int = 0
+    fit_errors: int = 0
 
 
 class Follower:
@@ -258,6 +308,7 @@ class Follower:
                 "ticks": self.stats.ticks, "windowsScored": self.stats.windows_scored, "anomalies": self.stats.anomalies,
                 "datalakeErrors": self.stats.datalake_errors, "writeErrors": self.stats.write_errors, "mqttErrors": self.stats.mqtt_errors,
                 "notFitted": self.stats.not_fitted,
+                "fittedOnStart": self.stats.fitted_on_start, "fitErrors": self.stats.fit_errors,
                 "series": [
                     {
                         "sourceId": key.source_id, "kind": key.kind, "field": key.field, "note": st.note,
@@ -389,7 +440,49 @@ class Follower:
             else:
                 self._warned.discard((key, "mqtt"))
 
+    def fit_missing(self) -> int:
+        """Fit, from its own `train` range in DATALAKE, every series that has no baseline yet (one restored from `--baseline-dir` or fitted
+        by hand is left alone). Only with `fitOnStart`; returns how many series were fitted. A series that cannot be fitted (DATALAKE
+        down, too few windows) is reported and counted, never guessed, and the follower goes on with the others."""
+        if not self.config.fit_on_start:
+            return 0
+        fitted = 0
+        for series in self.config.series:
+            key, train = series.key, series.train
+            if train is None or self.registry.get(key) is not None:
+                continue
+            label = f"{key.source_id}/{key.kind}/{key.field}"
+            try:
+                fetched = fetch_windows_checked(
+                    self.client, source_id=key.source_id, kind=key.kind, field=key.field, window_size=series.window_size,
+                    sample_rate=self.sample_rate, start=train.start, end=train.end, before=train.before, max_points=train.max_points,
+                    tolerance=self.config.gap_tolerance,
+                )
+                if fetched.truncated:
+                    self._log(f"the training history of {label} is longer than maxPoints; the baseline is made from its oldest part")
+                detector = self.registry.new_detector()
+                prepared = detector.prepare_fit(fetched.windows)
+                entry = self.registry.insert(key, detector)
+                with entry.lock:
+                    entry.detector.adopt(prepared)
+                    if entry.baseline_path is not None:
+                        save_baseline(entry.baseline_path, entry.detector.baseline, entry.detector.model_version)  # type: ignore[arg-type]
+            except (DatalakeError, BaselineError, RegistryError, ValueError, OSError) as error:
+                with self._lock:
+                    self.stats.fit_errors += 1
+                self._log(f"cannot fit {label} from its training range: {error}")
+                continue
+            fitted += 1
+            with self._lock:
+                self.stats.fitted_on_start += 1
+            self._log(f"fitted {label} from {len(fetched.windows)} window(s) of its training range")
+        return fitted
+
     def run(self, stop: threading.Event) -> None:
+        try:
+            self.fit_missing()
+        except Exception as error:  # a fit that fails must not stop the scoring of the other series
+            self._log(f"fit at start failed: {error}")
         while not stop.is_set():
             try:
                 self.tick()

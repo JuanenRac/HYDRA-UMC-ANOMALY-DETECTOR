@@ -18,7 +18,7 @@ GPL-3.0-or-later - see LICENSE
   <img src="https://img.shields.io/badge/License-GPL%203.0--or--later-blue.svg" alt="GPL 3.0 or later">
   <img src="https://img.shields.io/badge/Tech-Python%20%2F%20NumPy-blueviolet.svg" alt="Tech">
   <img src="https://img.shields.io/badge/Method-FFT%20%2F%20Spectrogram-orange.svg" alt="Method">
-  <img src="https://img.shields.io/badge/Tests-388%20passing-2ea44f.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-407%20passing-2ea44f.svg" alt="Tests">
   <img src="https://img.shields.io/badge/Version-0.2.3-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-functional-0F6CBD.svg" alt="Maturity">
 </p>
@@ -37,7 +37,7 @@ GPL-3.0-or-later - see LICENSE
 |---|---|
 | Version | `0.2.3` |
 | Maturité | Fonctionnel |
-| Tests | 388 (`python -m pytest -q tests`) |
+| Tests | 407 (`python -m pytest -q tests`) |
 | Technologie | Python / FFT / statistical baseline detection |
 | Cible | Le Raspberry Pi CM5 d'une cellule HYDRA-UMC |
 | Sur matériel réel | Sans objet : rien ici ne s'exécute sur du matériel |
@@ -53,7 +53,7 @@ Chaque ligne est une partie de ce dépôt et le feu dit où elle en est aujourd'
 | Domaine | État | Ce que cela veut dire ici |
 |---|---|---|
 | Logiciel | 🟡 | Fonctionne pour son usage principal ; la vérification d'honnêteté ci-dessus liste ce qui manque encore |
-| Tests | 🟢 | 388 tests automatiques, exécutés à chaque modification |
+| Tests | 🟢 | 407 tests automatiques, exécutés à chaque modification |
 | Matériel réel | 🟢 | Sans objet : rien ici ne s'exécute sur du matériel |
 | Interface et protocoles | 🟡 | Les routes ou les messages proposés sont documentés et testés avec un client ; tous les clients ne les ont pas encore utilisés |
 | Intégration | 🟡 | Il fonctionne avec les autres services sur le banc d'essai CM5 et ses messages suivent les contrats partagés du SDK |
@@ -171,7 +171,7 @@ curl http://127.0.0.1:8097/stats
 
 ## 🧪 Tests
 
-388 tests automatiques s'exécutent avec `python -m pytest -q tests`. Ils utilisent des signaux réalistes, des contrôles de faux positifs et un faux data lake ; ni matériel ni réseau extérieur.
+407 tests automatiques s'exécutent avec `python -m pytest -q tests`. Ils utilisent des signaux réalistes, des contrôles de faux positifs et un faux data lake ; ni matériel ni réseau extérieur.
 
 | Fichier de tests | Tests | Ce qu'il couvre |
 |---|---|---|
