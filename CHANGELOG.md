@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **The start of the service is tested:** `tests/test_main_start.py` (31 tests) checks where the tokens of the data lake come from (the file of the configuration, the environment, the `_FILE` twin of a variable), what the detector configuration file may hold (unknown keys, a value that is not an object, a wrong `rul` or `rulMinPoints`, an unknown scoring), every option combination that stops the start with exit 2 before anything listens, a fit from the data lake or a stored baseline that fails (exit 1), and the normal start with a stand-in server: loopback by default, reads protected as soon as there is a token or the identity of the server, and the switches that leave them open on purpose. Line coverage of `main.py` goes from 58 % to 79 %.
+
 - **The identity of the server is tested at its edges:** `tests/test_server_identity_edges.py` (60 tests) checks every reason a token is refused (shape, header, algorithm, signature, expiry, claims), the key files, the choice of key by flag or environment, the decision of `accepts` for each method and role, and the probe and its command line against a small local service. Line coverage of `server_identity.py` goes from 71 % to 98 %.
 
 ## [0.2.3] - The verdict of each series can be left for the server, off by default (publishVerdicts): when the verdict of a series changes (the first one counts) the follower publishes a retained anomaly-verdict/1 message at... (and 3 more changes)
