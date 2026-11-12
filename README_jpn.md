@@ -73,6 +73,8 @@ GPL-3.0-or-later - see LICENSE
 
 **HYDRA-UMC-ANOMALY-DETECTOR** は HYDRA-UMC-DATALAKE が保管するテレメトリを読み、以前と違う挙動の系列（鳴き始めたベアリング、ドリフトするドライブ）を見つけ、HTTP、データレイクへの書き戻し、MQTT 警報で知らせます。監視するだけで、機械に指令は出しません。
 
+> **プラットフォーム：** この README の「CM5」は、現在動作している試験用ベンチを指します。HYDRA-UMC の目標プラットフォームは NVIDIA Jetson Orin NX 16 GB ですが、これは製作も試験もされていない設計です。
+
 ## 🏛️ アーキテクチャ
 
 <p align="center">

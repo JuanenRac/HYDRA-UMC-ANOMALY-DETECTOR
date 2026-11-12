@@ -74,6 +74,8 @@ GPL-3.0-or-later - see LICENSE
 
 **HYDRA-UMC-ANOMALY-DETECTOR** 读取 HYDRA-UMC-DATALAKE 保存的遥测数据，找出不再像以前那样工作的序列（开始啸叫的轴承、发生漂移的驱动），并通过 HTTP、写回数据湖和 MQTT 报警告知。它只监视，从不指挥机器。
 
+> **平台：** 本 README 中的 CM5 指的是目前正在运行的试验台；HYDRA-UMC 的目标平台是 NVIDIA Jetson Orin NX 16 GB，这是尚未制造或测试的设计。
+
 ## 🏛️ 架构
 
 <p align="center">

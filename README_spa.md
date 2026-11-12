@@ -73,6 +73,8 @@ El objetivo es monitorizar la "huella digital" de cada motor y cabezal de herram
 
 **HYDRA-UMC-ANOMALY-DETECTOR** lee la telemetría que guarda HYDRA-UMC-DATALAKE, encuentra las series que ya no se comportan como antes (un rodamiento que empieza a cantar, un accionamiento que deriva) y lo dice por HTTP, de vuelta en el data lake y como alarmas MQTT. Vigila; nunca manda a una máquina.
 
+> **Plataforma:** donde este README dice CM5, se refiere al banco piloto que funciona hoy; la plataforma objetivo de HYDRA-UMC es una NVIDIA Jetson Orin NX de 16 GB, un diseño que no se ha construido ni probado.
+
 ## 🏛️ Arquitectura
 
 <p align="center">
