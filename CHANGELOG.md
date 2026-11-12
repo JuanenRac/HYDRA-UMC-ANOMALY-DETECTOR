@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **The identity of the server is tested at its edges:** `tests/test_server_identity_edges.py` (60 tests) checks every reason a token is refused (shape, header, algorithm, signature, expiry, claims), the key files, the choice of key by flag or environment, the decision of `accepts` for each method and role, and the probe and its command line against a small local service. Line coverage of `server_identity.py` goes from 71 % to 98 %.
+
 ## [0.2.3] - The verdict of each series can be left for the server, off by default (publishVerdicts): when the verdict of a series changes (the first one counts) the follower publishes a retained anomaly-verdict/1 message at... (and 3 more changes)
 
 - **The verdict of each series can be left for the server, off by default (`publishVerdicts`):** when the verdict of a series changes (the first one counts) the follower publishes a retained `anomaly-verdict/1` message at `<topicPrefix>/verdict/<sourceId>/<kind>/<field>` with `normal`, `suspect` (the score is at `suspectRatio` of the threshold or more, 0.8 by default) or `anomalous`, so HYDRA-UMC-SERVER can keep the latest verdict of every series and tell the voice interface about a change. 4 new tests (275 in all).
