@@ -2,6 +2,10 @@
 
 All notable changes to this project are documented here.
 
+## [Unreleased]
+
+- **A short-time spectrogram and a finder of transients (`spectrogram.py`):** `compute_spectrogram` cuts a signal into overlapping Hann-windowed frames and gives the amplitude of each frequency in each frame (`frame_energy`, `band_energy`); `find_transients` flags the frames whose energy, in the logarithm, is more than a threshold of robust deviations (median and MAD) above the median, and says nothing when the frames are too alike to judge. A knock that the whole-window spectrum averages away shows up in a few frames. 11 tests on simulated signals; nothing here has been checked on a machine.
+
 ## [0.2.4] - Fit without a baseline and more tests of the start
 
 - **README: the platform statement:** a note says that where the README speaks of the CM5 it means the pilot bench that runs today, and that the target platform of HYDRA-UMC, an NVIDIA Jetson Orin NX 16 GB, is a design that has not been built or tested.
