@@ -4,6 +4,7 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **A relative floor for the spread of each bin, off by default (`--relative-floor`, or `relativeFloor` in the detector configuration file):** a fraction from 0 to 1 of the level of each frequency bin below which its spread is never taken. A very steady motor has a spread so small that the smallest change of load scores in the hundreds, and the absolute floor cannot tell a quiet bin from a loud one; with 0.05, a bin is never judged on less than 5 % of its own level. A value outside 0 to 1 is refused at start. The minimum of ten windows and the sample standard deviation were already the default; the quantile threshold and the normalisation by amplitude need recordings of a real motor and are not part of this step, and no threshold is claimed for any real machine. `tests/test_relative_floor.py` (10 tests, synthetic motors with a seed: simulator evidence only).
 - **A short-time spectrogram and a finder of transients (`spectrogram.py`):** `compute_spectrogram` cuts a signal into overlapping Hann-windowed frames and gives the amplitude of each frequency in each frame (`frame_energy`, `band_energy`); `find_transients` flags the frames whose energy, in the logarithm, is more than a threshold of robust deviations (median and MAD) above the median, and says nothing when the frames are too alike to judge. A knock that the whole-window spectrum averages away shows up in a few frames. 11 tests on simulated signals; nothing here has been checked on a machine.
 
 ## [Unreleased]

@@ -57,6 +57,7 @@ class AnomalyDetector:
     def __init__(
         self, sample_rate: float, *, threshold: float = 10.0, window: str = "none", legacy_baseline: bool = False,
         min_windows: int | None = None, ddof: int | None = None, scoring: str = "zscore", robust: RobustSettings | None = None,
+        relative_floor: float = 0.0,
     ) -> None:
         """`threshold` is a cutoff on the WORST (max) per-bin z-score
         across the whole spectrum - taking a max over many bins (a
@@ -87,6 +88,10 @@ class AnomalyDetector:
         # Explicit values (from the detector configuration file) win over both the default and the legacy preset.
         self._min_windows = min_windows
         self._ddof = ddof
+        # 0 = off. A fraction of the level of each bin below which its spread is never taken (baseline.fit_baseline); refused when it is not 0 to 1.
+        if isinstance(relative_floor, bool) or not isinstance(relative_floor, (int, float)) or not 0.0 <= relative_floor <= 1.0:
+            raise ValueError("relative_floor must be a number from 0 to 1")
+        self._relative_floor = float(relative_floor)
         self._threshold = threshold
         if scoring not in SCORINGS:
             raise ValueError(f"scoring must be one of {SCORINGS}, not {scoring!r}")
@@ -117,6 +122,7 @@ class AnomalyDetector:
             window=self._window,
             min_windows=self._min_windows if self._min_windows is not None else (LEGACY_MIN_WINDOWS if self._legacy_baseline else None),
             ddof=self._ddof if self._ddof is not None else (LEGACY_DDOF if self._legacy_baseline else None),
+            relative_floor=self._relative_floor,
         )
 
     def adopt(self, baseline: Baseline) -> None:
@@ -179,6 +185,10 @@ class AnomalyDetector:
     @property
     def ddof(self) -> int | None:
         return self._ddof
+
+    @property
+    def relative_floor(self) -> float:
+        return self._relative_floor
 
     @property
     def sample_rate(self) -> float:

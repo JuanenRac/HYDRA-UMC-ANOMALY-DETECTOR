@@ -129,6 +129,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--legacy-baseline", action="store_true", help="fit baselines the earlier way: 2 healthy windows are enough and the spread is the population standard deviation (default: at least 10 windows and the sample standard deviation, which gives fewer false alarms)")
     parser.add_argument("--min-windows", type=int, default=None, help="healthy windows a fit needs (default 10, or 2 with --legacy-baseline); can also be set in --detector-config")
     parser.add_argument("--ddof", type=int, choices=(0, 1), default=None, help="1 = sample standard deviation (default), 0 = population one; can also be set in --detector-config")
+    parser.add_argument("--relative-floor", type=float, default=0.0, help="0 = off (the default). A fraction from 0 to 1 of the level of each frequency bin below which its spread is never taken, so a very steady motor does not score in the hundreds for the smallest change of load; can also be set in --detector-config as relativeFloor")
     parser.add_argument("--detector-config", default=None, help="JSON file with the tuned values of the detector (threshold, window, minWindows, ddof, sampleRate, legacyBaseline, rul, rulMinPoints, scoring, robust, diagnosis, orderTracking); a flag given on the command line wins over the file")
     parser.add_argument("--window", choices=WINDOWS, default="none", help="window applied before the FFT: none (the original behaviour), hann (removes the mean and the leakage of a speed that wanders) or welch (Hann segments averaged in power: steadier magnitudes, half the frequency resolution); recalibrate --threshold with real healthy recordings before trusting hann or welch. A baseline remembers the window it was made with.")
     # the robust scoring (robust.py), the diagnosis by characteristic frequencies (machine.py) and order tracking (orders.py) are chosen and tuned in --detector-config
@@ -153,7 +154,7 @@ def main(argv: list[str] | None = None) -> int:
             raw = json.loads(Path(pre.detector_config).read_text(encoding="utf-8"))
             if not isinstance(raw, dict):
                 raise ValueError("the file must hold a JSON object")
-            names = {"threshold": "threshold", "window": "window", "minWindows": "min_windows", "ddof": "ddof", "sampleRate": "sample_rate", "legacyBaseline": "legacy_baseline", "rul": "rul", "rulMinPoints": "rul_min_points", "scoring": "scoring", "robust": "robust", "diagnosis": "diagnosis", "orderTracking": "order_tracking"}
+            names = {"threshold": "threshold", "window": "window", "minWindows": "min_windows", "ddof": "ddof", "relativeFloor": "relative_floor", "sampleRate": "sample_rate", "legacyBaseline": "legacy_baseline", "rul": "rul", "rulMinPoints": "rul_min_points", "scoring": "scoring", "robust": "robust", "diagnosis": "diagnosis", "orderTracking": "order_tracking"}
             unknown = sorted(set(raw) - set(names))
             if unknown:
                 raise ValueError(f"unknown keys: {', '.join(unknown)}")
@@ -178,6 +179,9 @@ def main(argv: list[str] | None = None) -> int:
         order_settings = parse_order_settings(args.order_tracking)
     except (MachineError, OrderError) as e:
         print(f"error: --detector-config: {e}", file=sys.stderr)
+        return 2
+    if isinstance(args.relative_floor, bool) or not isinstance(args.relative_floor, (int, float)) or not 0.0 <= args.relative_floor <= 1.0:
+        print("error: relative-floor must be a number from 0 to 1", file=sys.stderr)
         return 2
     if args.window not in WINDOWS or (args.min_windows is not None and args.min_windows < 2):
         print("error: window must be one of " + ", ".join(WINDOWS) + " and min-windows at least 2", file=sys.stderr)
@@ -217,7 +221,7 @@ def main(argv: list[str] | None = None) -> int:
     print(f"{PROJECT_NAME} v{__version__}")
     print(ROLE)
 
-    detector = AnomalyDetector(sample_rate=args.sample_rate, threshold=args.threshold, window=args.window, legacy_baseline=args.legacy_baseline, min_windows=args.min_windows, ddof=args.ddof, scoring=args.scoring, robust=robust_settings)
+    detector = AnomalyDetector(sample_rate=args.sample_rate, threshold=args.threshold, window=args.window, legacy_baseline=args.legacy_baseline, min_windows=args.min_windows, ddof=args.ddof, scoring=args.scoring, robust=robust_settings, relative_floor=args.relative_floor)
     baseline_path = Path(args.baseline_path) if args.baseline_path else None
 
     if args.datalake_url is not None:
@@ -271,7 +275,7 @@ def main(argv: list[str] | None = None) -> int:
         print("error: --max-series must be at least 1", file=sys.stderr)
         return 2
     registry = DetectorRegistry(
-        lambda: AnomalyDetector(sample_rate=args.sample_rate, threshold=args.threshold, window=args.window, legacy_baseline=args.legacy_baseline, min_windows=args.min_windows, ddof=args.ddof, scoring=args.scoring, robust=robust_settings),
+        lambda: AnomalyDetector(sample_rate=args.sample_rate, threshold=args.threshold, window=args.window, legacy_baseline=args.legacy_baseline, min_windows=args.min_windows, ddof=args.ddof, scoring=args.scoring, robust=robust_settings, relative_floor=args.relative_floor),
         Path(args.baseline_dir) if args.baseline_dir else None,
         args.max_series,
     )
