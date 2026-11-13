@@ -2,7 +2,7 @@
 
 All notable changes to this project are documented here.
 
-## [Unreleased]
+## [0.2.4] - Fit without a baseline and more tests of the start
 
 - **README: the platform statement:** a note says that where the README speaks of the CM5 it means the pilot bench that runs today, and that the target platform of HYDRA-UMC, an NVIDIA Jetson Orin NX 16 GB, is a design that has not been built or tested.
 - **The follower can fit a series that has no baseline when it starts, from a training range of its own (`fitOnStart`, off by default).** In the follow configuration, `fitOnStart: true` and a `train` object on a series (`start` and exactly one of `end` or `before`, unix ms, and optionally `maxPoints`) make the follower read that healthy history from DATALAKE at start-up and fit the detector of the series with it, saving the baseline when `--baseline-dir` is set. A series that already has a baseline is not touched, the follower never refits later on its own, and a series that cannot be fitted is logged and counted (`fittedOnStart`, `fitErrors` in `GET /stats`) and stays unfitted. A bad switch or range is refused when the configuration is read. `tests/test_follower.py` gains 19 tests (switch off, fit from the configured range only, no refit, too few windows, DATALAKE down, saved baseline restored by a restart, every bad range).
