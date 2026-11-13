@@ -49,6 +49,10 @@ Calling this again replaces the previous baseline - it is not additive. A drift 
 
 ---
 
+## The relative floor (`--relative-floor`, or `"relativeFloor"` in `--detector-config`, off by default)
+
+A fraction from 0 to 1 of the level of each frequency bin below which its spread is never taken when a z-score baseline is fitted. `0` (the default) keeps the absolute floor only. With `0.05` a bin is never judged on a spread below 5 % of its own level, which stops a very steady motor from scoring in the hundreds for the smallest change of load. A value outside 0 to 1 is refused at start. It has been tried only on synthetic motors: recalibrate `--threshold` with healthy recordings of the real machine before trusting it.
+
 ## The robust scoring (`"scoring": "robust"`, off by default)
 
 Chosen and tuned in the file of `--detector-config`, not on the command line:

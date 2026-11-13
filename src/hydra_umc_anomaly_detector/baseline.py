@@ -90,6 +90,7 @@ def fit_baseline(
     window: str = "none",
     min_windows: int | None = None,
     ddof: int | None = None,
+    relative_floor: float = 0.0,
 ) -> Baseline:
     """Builds a Baseline from real "known-healthy" signal windows -
     computes a real FFT per window, then the real per-bin mean/std
@@ -100,6 +101,10 @@ def fit_baseline(
     constant across every training window would otherwise divide by
     zero the moment a live reading differs from it at all, which is a
     real numerical failure mode this floor exists specifically to avoid.
+
+    `relative_floor` (default 0.0 = off) additionally floors the standard deviation of every bin at that fraction of the mean magnitude of the bin:
+    a very steady motor has a spread so small that the smallest change of load scores in the hundreds, and the absolute `min_std` cannot tell a quiet
+    bin from a loud one. For example 0.05 means "a bin is never judged on a spread below 5 % of its own level". It must be between 0 and 1.
     """
     # Read at call time so the defaults above are the single place that sets them.
     min_windows = DEFAULT_MIN_WINDOWS if min_windows is None else min_windows
@@ -108,6 +113,8 @@ def fit_baseline(
         raise BaselineError(f"min_windows must be at least 2, got {min_windows}")
     if ddof not in (0, 1):
         raise BaselineError(f"ddof must be 0 or 1, got {ddof}")
+    if isinstance(relative_floor, bool) or not isinstance(relative_floor, (int, float)) or not 0.0 <= relative_floor <= 1.0:
+        raise BaselineError(f"relative_floor must be a number from 0 to 1, got {relative_floor!r}")
     if len(healthy_windows) < min_windows:
         raise BaselineError(
             f"need at least {min_windows} healthy windows to compute a standard deviation, got {len(healthy_windows)}"
@@ -120,6 +127,8 @@ def fit_baseline(
     magnitudes = np.stack([s.magnitudes for s in spectra])  # shape (n_windows, n_bins)
     mean = magnitudes.mean(axis=0)
     std = np.maximum(magnitudes.std(axis=0, ddof=ddof), min_std)
+    if relative_floor > 0.0:
+        std = np.maximum(std, relative_floor * np.abs(mean))
     return Baseline(
         freqs=spectra[0].freqs,
         mean=mean,
