@@ -6,6 +6,12 @@ All notable changes to this project are documented here.
 
 - **A short-time spectrogram and a finder of transients (`spectrogram.py`):** `compute_spectrogram` cuts a signal into overlapping Hann-windowed frames and gives the amplitude of each frequency in each frame (`frame_energy`, `band_energy`); `find_transients` flags the frames whose energy, in the logarithm, is more than a threshold of robust deviations (median and MAD) above the median, and says nothing when the frames are too alike to judge. A knock that the whole-window spectrum averages away shows up in a few frames. 11 tests on simulated signals; nothing here has been checked on a machine.
 
+## [Unreleased]
+
+- **A simulation bench for the service loop:** `tests/test_simulation_bench.py` runs the real follower, registry and data lake client against a seeded fleet of synthetic motors, a real HTTP stand-in of the data lake and a real TCP stand-in of the broker, with a wearing bearing, a data lake that is down or refuses the verdicts, a broker that refuses the connection, a hole in the sampling and a sensor that sends a value that is not a number. The workflow "Simulation bench" runs it on every change and `docs/SIMULATION.md` describes it. The manifest now declares the evidence level `simulator`.
+- **The coverage of the tests is measured on every change:** the workflow "Coverage floor" runs the whole suite under line and branch coverage and fails when it falls under 92 %.
+- **The MQTT publisher and the metrics text are tested at their edges:** `tests/test_mqtt_and_metrics_edges.py` checks packets over the size the standard allows, a broker that is not there, an answer that is not CONNACK, every refusal code, a broker that hangs up half way, TLS against a plain-text broker, and the escaping of the labels of the metrics.
+
 ## [0.2.4] - Fit without a baseline and more tests of the start
 
 - **README: the platform statement:** a note says that where the README speaks of the CM5 it means the pilot bench that runs today, and that the target platform of HYDRA-UMC, an NVIDIA Jetson Orin NX 16 GB, is a design that has not been built or tested.
