@@ -4,8 +4,8 @@
 # GPL-3.0-or-later - see LICENSE
 # =============================================================================
 """Real precision/recall over the exact same real healthy/faulty fixture
-detector.py's own tests use - the computed number this project's own
-docstring previously only claimed in prose.
+detector.py's own tests use - the computed number behind what the
+detector's own docstring states in prose.
 """
 from __future__ import annotations
 
@@ -50,8 +50,8 @@ def test_recall_is_one_when_nothing_is_actually_anomalous() -> None:
 
 
 def test_real_precision_and_recall_over_the_synthetic_healthy_faulty_fixture() -> None:
-    # The real, computed metric this project's detector.py docstring
-    # previously only claimed in prose ("healthy scored up to ~5.3,
+    # The real, computed metric behind what this project's detector.py
+    # docstring states in prose ("healthy scored up to ~5.3,
     # faulty scored in the hundreds"). Reuses the exact same fixture
     # signals and training seed as test_detector.py's own
     # fitted_detector, so this is a real regression test for the

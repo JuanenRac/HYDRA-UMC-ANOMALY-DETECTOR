@@ -80,16 +80,14 @@ def _follow_client(config, raw: dict) -> DatalakeClient:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="hydra-umc-anomaly-detector")
-    # Real gap: this used to default to
-    # "0.0.0.0" (every interface) with zero authentication on any
-    # endpoint (POST /baseline/fit lets anyone reachable overwrite the
-    # statistical baseline this whole detector compares real readings
-    # against) - the real CM5's own systemd unit already overrides this
-    # to "127.0.0.1" explicitly, matching every other internal-only API
-    # here (Datalake, Job-Dispatcher, Telemetry-Collector), so making it
-    # the real default too means running this tool bare (no systemd
-    # unit, a developer testing it locally) is safe by default instead
-    # of silently wide open.
+    # The default is "127.0.0.1", not "0.0.0.0" (every interface): there is
+    # zero authentication on any endpoint (POST /baseline/fit lets anyone
+    # reachable overwrite the statistical baseline this whole detector
+    # compares real readings against). The real CM5's own systemd unit
+    # sets "127.0.0.1" explicitly too, matching every other internal-only
+    # API here (Datalake, Job-Dispatcher, Telemetry-Collector), so running
+    # this tool bare (no systemd unit, a developer testing it locally) is
+    # safe by default instead of silently wide open.
     parser.add_argument("--addr", default="127.0.0.1", help="address to bind the HTTP API to")
     parser.add_argument("--health-open", action="store_true", help="answer GET /health (open to loopback, to other callers only with the bearer token); closed by default, or set HYDRA_UMC_ANOMALY_DETECTOR_HEALTH_OPEN=1")
     parser.add_argument("--port", type=int, default=8097, help="port for the HTTP API")

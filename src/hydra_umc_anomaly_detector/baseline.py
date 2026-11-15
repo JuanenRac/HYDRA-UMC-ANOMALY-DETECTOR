@@ -184,11 +184,11 @@ def save_baseline(path: Path, baseline: Baseline, model_version: int) -> None:
     already end in one.
 
     The write is atomic and durable: the new file is written next to the
-    target, flushed and fsynced, then renamed over it. It used to be
-    written in place, so a power cut mid-write (a CM5 is power-cycled)
-    left a truncated file that `load_baseline()` refused, and the last
-    good baseline was lost with it; now the old file stays intact until
-    the new one is complete.
+    target, flushed and fsynced, then renamed over it. Writing in place
+    would let a power cut mid-write (a CM5 is power-cycled) leave a
+    truncated file that `load_baseline()` refuses, and the last good
+    baseline would be lost with it; the old file stays intact until the
+    new one is complete.
     """
     path = Path(path)
     temporary = path.with_name(path.name + ".tmp")
