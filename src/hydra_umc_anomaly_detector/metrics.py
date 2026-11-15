@@ -4,8 +4,8 @@
 # GPL-3.0-or-later - see LICENSE
 # =============================================================================
 """Real precision/recall/F1 over a labeled fixture - the detector's own
-docstring previously only claimed "healthy scored up to ~5.3, faulty
-scored in the hundreds" in prose. This module is what turns that claim
+docstring claims in prose that "healthy scored up to ~5.3, faulty
+scored in the hundreds". This module turns that claim
 into a real, computed number a test can actually assert on, and gives
 any future re-tuning of `threshold` a real metric to check against
 instead of eyeballing a handful of scores again.
