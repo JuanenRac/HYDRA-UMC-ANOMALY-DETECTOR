@@ -20,6 +20,7 @@ Python package directly (separate repos/services on purpose).
 from __future__ import annotations
 
 import json
+import math
 import time
 import urllib.error
 import urllib.parse
@@ -178,6 +179,22 @@ class WindowFetch:
         if self.truncated:
             text += "; STOPPED at the point limit, there is more history than was read"
         return text
+
+
+def check_period_representable(sample_rate: float, tolerance: float = 0.5) -> None:
+    """The timestamps of the data lake are whole milliseconds, so a series is cut into evenly sampled runs only when both whole
+    spacings next to the period (its floor and its ceiling) fall inside the accepted band. Otherwise no window could ever be
+    formed and the series would wait for one for ever without an error: refuse the sampling rate at start-up instead."""
+    if sample_rate <= 0:
+        raise ValueError(f"sample_rate must be positive, got {sample_rate}")
+    period_ms = 1000.0 / sample_rate
+    low, high = period_ms * (1.0 - tolerance), period_ms * (1.0 + tolerance)
+    if math.floor(period_ms) < low or math.ceil(period_ms) > high or math.floor(period_ms) < 1:
+        raise ValueError(
+            f"a sampling rate of {sample_rate:g} Hz (a period of {period_ms:g} ms) cannot be followed: the time stamps of the data lake are "
+            f"whole milliseconds, so the spacing between samples is never inside {low:g} to {high:g} ms; use a rate whose period is a whole "
+            "number of milliseconds (1000, 500, 250, 200, 100 Hz...)"
+        )
 
 
 def split_runs(points: list[Point], sample_rate: float, tolerance: float = 0.5) -> list[list[Point]]:

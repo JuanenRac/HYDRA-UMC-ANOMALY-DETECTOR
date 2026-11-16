@@ -31,7 +31,7 @@ from .health_route import health_open_requested
 from .server_identity import identity_key_from
 from .api import DetectorServer
 from .baseline import BaselineError, load_baseline, save_baseline
-from .datalake_client import DatalakeClient, DatalakeError, fetch_windows_checked
+from .datalake_client import DatalakeClient, DatalakeError, check_period_representable, fetch_windows_checked
 from .fleet import FleetTracker
 from .follower import Follower, FollowConfigError, load_follow_config
 from .mqtt_publish import MqttPublisher
@@ -289,7 +289,8 @@ def main(argv: list[str] | None = None) -> int:
         try:
             follow_config, follow_raw = load_follow_config(args.follow_config)
             client = _follow_client(follow_config, follow_raw)
-        except FollowConfigError as e:
+            check_period_representable(args.sample_rate, follow_config.gap_tolerance)
+        except (FollowConfigError, ValueError) as e:
             print(f"error: --follow-config: {e}", file=sys.stderr)
             server.server_close()
             return 2

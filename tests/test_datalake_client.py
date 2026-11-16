@@ -11,10 +11,12 @@ GET /query contract - not a mocked function call.
 """
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 import pytest
 
 from fake_datalake import running_fake_datalake
-from hydra_umc_anomaly_detector.datalake_client import DatalakeClient, DatalakeError, fetch_windows
+from hydra_umc_anomaly_detector.datalake_client import DatalakeClient, DatalakeError, check_period_representable, fetch_windows
 
 
 def test_query_real_round_trip() -> None:
@@ -124,3 +126,22 @@ def test_fetch_windows_accepts_the_exclusive_end() -> None:
         client = DatalakeClient(url)
         windows = fetch_windows(client, source_id="m", kind="vibration", field="value", window_size=2, start=1000, before=3000)
         assert windows == [[1000.0, 2000.0]]
+
+
+@pytest.mark.parametrize("rate", [1000.0, 500.0, 250.0, 100.0, 1.0, 10.0])
+def test_a_sampling_rate_with_a_whole_millisecond_period_can_be_followed(rate):
+    check_period_representable(rate)
+
+
+@pytest.mark.parametrize("rate", [2000.0, 4000.0, 800.0, 1500.0, 0.0, -5.0])
+def test_a_sampling_rate_the_millisecond_stamps_cannot_carry_is_refused_at_start_up(rate):
+    with pytest.raises(ValueError):
+        check_period_representable(rate)
+
+
+def test_the_follower_refuses_a_sampling_rate_it_could_never_form_a_window_with():
+    from hydra_umc_anomaly_detector.follower import Follower
+    from hydra_umc_anomaly_detector.registry import DetectorRegistry
+
+    with pytest.raises(ValueError, match="whole milliseconds"):
+        Follower(SimpleNamespace(gap_tolerance=0.5, series=[]), DetectorRegistry(lambda: None, None, 1), DatalakeClient("http://127.0.0.1:9"), sample_rate=2000.0)
