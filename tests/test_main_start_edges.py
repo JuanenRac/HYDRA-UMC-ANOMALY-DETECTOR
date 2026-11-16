@@ -179,7 +179,7 @@ class TestFollowMode:
     def follow(self, monkeypatch, *, fleet: bool, mqtt: bool, mode: str = "propose"):
         config = SimpleNamespace(
             mqtt=object() if mqtt else None, fleet=SimpleNamespace(enabled=fleet), maintenance=SimpleNamespace(mode=mode),
-            series=["s1", "s2"], datalake_url="http://127.0.0.1:1", interval_s=5.0, write_scores=True, score_kind="anomaly_score",
+            series=["s1", "s2"], datalake_url="http://127.0.0.1:1", interval_s=5.0, write_scores=True, score_kind="anomaly_score", gap_tolerance=0.5,
         )
         events = {"stopped": False, "logs": []}
 

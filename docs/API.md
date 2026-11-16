@@ -225,7 +225,7 @@ reported once (`note: "not fitted"` in `GET /stats`) and scored as soon as it ha
 ```
 
 Only `datalake.url` and `series` are required. The DATALAKE tokens come from the files named there, or from `HYDRA_UMC_DATALAKE_READ_TOKEN` /
-`HYDRA_UMC_DATALAKE_INGEST_TOKEN` / `HYDRA_UMC_DATALAKE_TOKEN` (each also as `..._FILE`). The detector's own `--sample-rate` is the rate of every series.
+`HYDRA_UMC_DATALAKE_INGEST_TOKEN` / `HYDRA_UMC_DATALAKE_TOKEN` (each also as `..._FILE`). The detector's own `--sample-rate` is the rate of every series. With `--follow-config` the command refuses, at start-up, a rate whose period is not a whole number of milliseconds inside the accepted spacing (for example 2000 or 800 Hz), because the time stamps of DATALAKE are whole milliseconds and no window could ever be formed.
 
 * **A baseline at start-up** (`fitOnStart`, off by default): with it on, a series that has no baseline when the service starts (none restored from `--baseline-dir`, none fitted by hand)
   is fitted from its own `train` range, the healthy history that is read from DATALAKE for it (`start` and exactly one of `end`, inclusive, or `before`, exclusive, in unix ms;

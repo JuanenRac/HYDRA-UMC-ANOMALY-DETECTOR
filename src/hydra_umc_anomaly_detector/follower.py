@@ -31,7 +31,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .baseline import BaselineError, save_baseline
-from .datalake_client import DatalakeClient, DatalakeError, fetch_windows_checked, split_runs
+from .datalake_client import DatalakeClient, DatalakeError, check_period_representable, fetch_windows_checked, split_runs
 from .fleet import FleetConfig, FleetConfigError, FleetTracker, MaintenanceConfig, parse_fleet_config, parse_maintenance_config
 from .mqtt_publish import MqttError, MqttPublisher, MqttTarget
 from .registry import DetectorRegistry, RegistryError, SeriesKey, parse_key
@@ -289,6 +289,7 @@ class Follower:
         clock=time.time,
         log=None,
     ) -> None:
+        check_period_representable(sample_rate, config.gap_tolerance)
         self.config = config
         self.registry = registry
         self.client = client
