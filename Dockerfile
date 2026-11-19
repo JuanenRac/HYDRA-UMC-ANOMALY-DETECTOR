@@ -17,7 +17,7 @@
 #
 # Continuous service mode: mount a follow configuration and add its path, e.g. ... hydra-umc-anomaly-detector --follow-config /config/follow.json
 
-FROM python:3.12-slim
+FROM python:3.15-slim
 
 WORKDIR /app
 COPY pyproject.toml README.md CHANGELOG.md LICENSE.md ./
