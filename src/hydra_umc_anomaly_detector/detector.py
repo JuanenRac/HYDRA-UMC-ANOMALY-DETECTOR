@@ -20,7 +20,7 @@ running.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 import numpy as np
 
@@ -29,6 +29,7 @@ from .baseline import (
     LEGACY_MIN_WINDOWS,
     Baseline,
     BaselineError,
+    ac_rms,
     fit_baseline,
     fit_robust_baseline,
 )
@@ -36,6 +37,9 @@ from .fft import WINDOWS, compute_spectrum
 from .robust import RobustSettings, features, score_features
 
 SCORINGS = ("zscore", "robust")
+
+# A window whose RMS (mean removed) is below this share of the median RMS of the healthy training windows carries no signal to judge.
+DEFAULT_NO_SIGNAL_FRACTION = 0.05
 
 
 class NotFittedError(RuntimeError):
@@ -51,13 +55,14 @@ class Verdict:
     model_version: int
     threshold: float
     calibration_windows: int = 0
+    no_signal: bool = False
 
 
 class AnomalyDetector:
     def __init__(
         self, sample_rate: float, *, threshold: float = 10.0, window: str = "none", legacy_baseline: bool = False,
         min_windows: int | None = None, ddof: int | None = None, scoring: str = "zscore", robust: RobustSettings | None = None,
-        relative_floor: float = 0.0,
+        relative_floor: float = 0.0, no_signal_fraction: float = DEFAULT_NO_SIGNAL_FRACTION,
     ) -> None:
         """`threshold` is a cutoff on the WORST (max) per-bin z-score
         across the whole spectrum - taking a max over many bins (a
@@ -92,6 +97,10 @@ class AnomalyDetector:
         if isinstance(relative_floor, bool) or not isinstance(relative_floor, (int, float)) or not 0.0 <= relative_floor <= 1.0:
             raise ValueError("relative_floor must be a number from 0 to 1")
         self._relative_floor = float(relative_floor)
+        # 0 = off: a silent window is then judged like any other.
+        if isinstance(no_signal_fraction, bool) or not isinstance(no_signal_fraction, (int, float)) or not 0.0 <= no_signal_fraction < 1.0:
+            raise ValueError("no_signal_fraction must be a number from 0 (off) up to, but not including, 1")
+        self._no_signal_fraction = float(no_signal_fraction)
         self._threshold = threshold
         if scoring not in SCORINGS:
             raise ValueError(f"scoring must be one of {SCORINGS}, not {scoring!r}")
@@ -191,6 +200,10 @@ class AnomalyDetector:
         return self._relative_floor
 
     @property
+    def no_signal_fraction(self) -> float:
+        return self._no_signal_fraction
+
+    @property
     def sample_rate(self) -> float:
         return self._sample_rate
 
@@ -223,8 +236,13 @@ class AnomalyDetector:
         """
         if self._baseline is None:
             raise NotFittedError("call fit() with known-healthy windows before score()")
-        if self._baseline.mode == "robust":
-            return self._score_robust(window)
+        verdict = self._score_robust(window) if self._baseline.mode == "robust" else self._score_zscore(window)
+        # asked after scoring, which refuses a window that cannot be judged at all; the score and `anomalous` are left as they are
+        silent = self._no_signal_fraction * self._baseline.training_rms
+        return replace(verdict, no_signal=True) if silent > 0.0 and ac_rms(window) < silent else verdict
+
+    def _score_zscore(self, window: np.ndarray | list[float]) -> Verdict:
+        assert self._baseline is not None
         spectrum = compute_spectrum(window, self._sample_rate, self._window)
         z = self._baseline.z_scores(spectrum)
         worst_idx = int(np.argmax(np.abs(z)))

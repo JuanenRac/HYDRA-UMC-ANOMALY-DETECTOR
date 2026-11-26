@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **A silent or vanished series is no longer shown as healthy:** a window with almost no signal (its RMS below `noSignalFraction`, 0.05 by default, of the training windows) is reported as `no_signal` (`/detect` adds `noSignal`), and a followed series with nothing scored for `staleAfterS` seconds (by default ten window lengths, at least 60 s) replaces its retained verdict with `stale`. Both are on by default and can be set to 0. Baselines saved earlier still load and give no `no_signal` until fitted again. The server has to know the two new words. Synthetic signals only.
+
 ## [0.2.5]
 
 - **A sampling rate that the time stamps of DATALAKE cannot carry is refused at start-up (`--follow-config`):** time stamps are whole milliseconds, so at 2000 Hz or 800 Hz no run of evenly spaced samples ever reached a window and the series waited without an error; the command now exits with code 2 and names the rate, its period and the accepted spacing. Tests cover the accepted and the refused rates and the follower.

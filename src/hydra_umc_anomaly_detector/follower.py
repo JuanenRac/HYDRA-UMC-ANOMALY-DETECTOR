@@ -41,6 +41,9 @@ DEFAULT_MAX_WINDOWS_PER_TICK = 20
 DEFAULT_TOPIC_PREFIX = "hydra/anomaly"
 VERDICT_SCHEMA = "anomaly-verdict/1"
 DEFAULT_SUSPECT_RATIO = 0.8   # a score from this share of the threshold up, but not over it, is "suspect"
+# Without `staleAfterS` a series is stale after this many window lengths with nothing scored, and never sooner than MIN_STALE_AFTER_S.
+STALE_AFTER_WINDOWS = 10
+MIN_STALE_AFTER_S = 60.0
 
 
 class FollowConfigError(ValueError):
@@ -80,6 +83,8 @@ class FollowConfig:
     suspect_ratio: float = DEFAULT_SUSPECT_RATIO
     fleet: FleetConfig = FleetConfig()
     maintenance: MaintenanceConfig = MaintenanceConfig()
+    # None: worked out per series (STALE_AFTER_WINDOWS, MIN_STALE_AFTER_S); 0: a verdict never goes stale
+    stale_after_s: float | None = None
     # off by default: with it on, a series that has no baseline at start-up is fitted from its own `train` range (see `Follower.fit_missing`)
     fit_on_start: bool = False
 
@@ -220,6 +225,7 @@ def parse_follow_config(raw: object) -> FollowConfig:
         topic_prefix=topic_prefix,
         publish_verdicts=bool(raw.get("publishVerdicts", False)),
         suspect_ratio=float(_number(raw, "suspectRatio", DEFAULT_SUSPECT_RATIO, 0.1, 1.0)),
+        stale_after_s=float(_number(raw, "staleAfterS", 0.0, 0.0, 604800.0)) if "staleAfterS" in raw else None,
         fleet=fleet,
         maintenance=maintenance,
         fit_on_start=fit_on_start,
@@ -235,10 +241,12 @@ def load_follow_config(path: str) -> tuple[FollowConfig, dict]:
     return parse_follow_config(raw), raw
 
 
-def verdict_of(score: float, threshold: float | None, anomalous: bool, suspect_ratio: float = DEFAULT_SUSPECT_RATIO) -> str:
-    """normal, suspect or anomalous: a window over the threshold is anomalous; one at `suspect_ratio` of it or more is suspect."""
+def verdict_of(score: float, threshold: float | None, anomalous: bool, suspect_ratio: float = DEFAULT_SUSPECT_RATIO, no_signal: bool = False) -> str:
+    """normal, suspect, anomalous or no_signal: a window over the threshold is anomalous (silent or not); a silent one is never normal; one at `suspect_ratio` of the threshold or more is suspect."""
     if anomalous:
         return "anomalous"
+    if no_signal:
+        return "no_signal"
     if threshold is not None and threshold > 0 and score >= suspect_ratio * threshold:
         return "suspect"
     return "normal"
@@ -261,6 +269,7 @@ class SeriesState:
     last_timestamp: int | None = None
     windows_scored: int = 0
     note: str = "waiting"
+    scored_at: float | None = None  # the clock of this machine when a window was last scored (or when watching began)
 
 
 @dataclass
@@ -313,7 +322,7 @@ class Follower:
                 "series": [
                     {
                         "sourceId": key.source_id, "kind": key.kind, "field": key.field, "note": st.note,
-                        "anomalous": st.anomalous, "lastScore": st.last_score, "lastTimestamp": st.last_timestamp, "windowsScored": st.windows_scored,
+                        "anomalous": st.anomalous, "verdict": st.verdict, "lastScore": st.last_score, "lastTimestamp": st.last_timestamp, "windowsScored": st.windows_scored,
                     }
                     for key, st in self.state.items()
                 ],
@@ -334,10 +343,43 @@ class Follower:
         """One pass over every series. Returns the number of windows scored."""
         scored = 0
         for series in self.config.series:
-            scored += self._follow(series)
+            count = self._follow(series)
+            self._check_stale(series, count)
+            scored += count
         with self._lock:
             self.stats.ticks += 1
         return scored
+
+    def _stale_after(self, series: SeriesConfig) -> float:
+        if self.config.stale_after_s is not None:
+            return self.config.stale_after_s
+        return max(MIN_STALE_AFTER_S, STALE_AFTER_WINDOWS * series.window_size / self.sample_rate)
+
+    def _check_stale(self, series: SeriesConfig, scored: int) -> None:
+        """A series with nothing scored for too long (it stopped arriving, its windows are refused, it lost its baseline) stops claiming its last verdict:
+        a retained `stale` replaces it, also the one a former run of this service left on the broker."""
+        key, st = series.key, self.state[series.key]
+        now = self._clock()
+        if scored or st.scored_at is None:
+            st.scored_at = now
+            return
+        limit = self._stale_after(series)
+        if limit <= 0 or now - st.scored_at <= limit or st.verdict == "stale":
+            return
+        if self.publisher is not None and self.config.publish_verdicts:
+            message = json.dumps({
+                "schema": VERDICT_SCHEMA, "source_id": key.source_id, "kind": key.kind, "field": key.field, "verdict": "stale",
+                "score": st.last_score if st.last_score is not None else 0.0, "threshold": None, "model_version": None, "timestamp": int(now * 1000),
+            }).encode("utf-8")
+            try:
+                self.publisher.publish(f"{self.config.topic_prefix}/verdict/{key.source_id}/{key.kind}/{key.field}", message, retain=True)
+            except MqttError as error:
+                with self._lock:
+                    self.stats.mqtt_errors += 1
+                self._warn_once(key, "mqtt", f"cannot publish that {key.source_id}/{key.kind}/{key.field} is stale: {error}")
+                return  # tried again at the next pass
+        with self._lock:
+            st.verdict = "stale"
 
     def _follow(self, series: SeriesConfig) -> int:
         key, st = series.key, self.state[series.key]
@@ -402,7 +444,8 @@ class Follower:
             changed = st.anomalous is not None and st.anomalous != verdict.anomalous
             first = st.anomalous is None
             st.anomalous = verdict.anomalous
-        if self.fleet is not None:
+        # a silent window says nothing about the drift of the machine
+        if self.fleet is not None and (verdict.anomalous or not verdict.no_signal):
             self.fleet.observe(key, verdict.score, timestamp, verdict.anomalous, verdict.threshold)
         if self.config.write_scores:
             fields = {key.field: verdict.score, f"{key.field}_anomalous": 1.0 if verdict.anomalous else 0.0, f"{key.field}_model": float(verdict.model_version)}
@@ -414,7 +457,7 @@ class Follower:
                 self._warn_once(key, "write", f"cannot write the verdict of {key.source_id}/{key.kind}/{key.field}: {error}")
             else:
                 self._warned.discard((key, "write"))
-        verdict_name = verdict_of(verdict.score, verdict.threshold, verdict.anomalous, self.config.suspect_ratio)
+        verdict_name = verdict_of(verdict.score, verdict.threshold, verdict.anomalous, self.config.suspect_ratio, verdict.no_signal)
         with self._lock:
             verdict_changed = st.verdict != verdict_name
             st.verdict = verdict_name

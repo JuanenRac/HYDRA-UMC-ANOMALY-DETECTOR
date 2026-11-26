@@ -246,6 +246,7 @@ class Handler(HealthRouteMixin, MetricsHandlerMixin, BaseHTTPRequestHandler):
                 "modelVersion": verdict.model_version,
                 "threshold": verdict.threshold,
                 "calibrationWindows": verdict.calibration_windows,
+                "noSignal": verdict.no_signal,
             },
         )
 
@@ -432,7 +433,7 @@ class DetectorServer(ThreadingHTTPServer):
         self.follower_snapshot: Callable[[], dict[str, object]] | None = None
         # Set when the follow configuration turns the fleet view on: GET /fleet answers 404 while it is None.
         self.fleet_snapshot: Callable[[], dict[str, object]] | None = None
-        self.registry = registry if registry is not None else DetectorRegistry(lambda: AnomalyDetector(sample_rate=detector.sample_rate, threshold=detector.threshold, window=detector.window, legacy_baseline=detector.legacy_baseline, min_windows=detector.min_windows, ddof=detector.ddof, scoring=detector.scoring, robust=detector.robust, relative_floor=detector.relative_floor))
+        self.registry = registry if registry is not None else DetectorRegistry(lambda: AnomalyDetector(sample_rate=detector.sample_rate, threshold=detector.threshold, window=detector.window, legacy_baseline=detector.legacy_baseline, min_windows=detector.min_windows, ddof=detector.ddof, scoring=detector.scoring, robust=detector.robust, relative_floor=detector.relative_floor, no_signal_fraction=detector.no_signal_fraction))
         # With protect_reads (and a token), POST /detect demands the token too; only GET /stats (the health path) stays open.
         # None (the default) means protected whenever a token is set: there is nothing to demand without one.
         self.protect_reads = bool(token) if protect_reads is None else protect_reads
