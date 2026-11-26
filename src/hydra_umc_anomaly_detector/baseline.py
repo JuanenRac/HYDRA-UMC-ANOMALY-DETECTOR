@@ -64,6 +64,9 @@ class Baseline:
     threshold: float | None = None
     settings: RobustSettings | None = None
     validation_windows: int = 0
+    # The median RMS (mean removed) of the healthy windows it was fitted with: what "there is a signal" means for this series.
+    # 0 means unknown (a baseline persisted before this was recorded): no window is then ever called silent.
+    training_rms: float = 0.0
 
     def z_scores(self, spectrum: Spectrum) -> np.ndarray:
         """Per-bin z-scores of `spectrum` against this baseline - the
@@ -80,6 +83,16 @@ class Baseline:
                 f"window length and sample rate as training"
             )
         return (spectrum.magnitudes - self.mean) / self.std
+
+
+def ac_rms(window: np.ndarray | list[float]) -> float:
+    """The RMS of a window with its mean removed, so that a constant reading (the gravity of a still accelerometer, a stuck sensor) is 0."""
+    values = np.asarray(window, dtype=float)
+    return float(np.sqrt(np.mean((values - values.mean()) ** 2)))
+
+
+def _median_rms(windows: list[np.ndarray] | list[list[float]]) -> float:
+    return float(np.median([ac_rms(w) for w in windows]))
 
 
 def fit_baseline(
@@ -136,6 +149,7 @@ def fit_baseline(
         n_windows=len(healthy_windows),
         sample_rate=float(sample_rate),
         window=window,
+        training_rms=_median_rms(healthy_windows),
     )
 
 
@@ -171,6 +185,7 @@ def fit_robust_baseline(
     return Baseline(
         freqs=rows[0][0], mean=centre, std=spread, n_windows=len(training), sample_rate=float(sample_rate), window=window,
         mode="robust", threshold=threshold, settings=settings, validation_windows=len(validation),
+        training_rms=_median_rms(healthy_windows),
     )
 
 
@@ -203,6 +218,7 @@ def save_baseline(path: Path, baseline: Baseline, model_version: int) -> None:
                 n_windows=np.asarray(baseline.n_windows),
                 sample_rate=np.asarray(baseline.sample_rate),
                 window=np.asarray(baseline.window),
+                training_rms=np.asarray(baseline.training_rms),
                 **_robust_arrays(baseline),  # type: ignore[arg-type]
             )
             fh.flush()
@@ -257,6 +273,7 @@ def load_baseline(path: Path) -> tuple[Baseline, int]:
             n_windows = int(data["n_windows"]) if "n_windows" in data.files else 0
             sample_rate = float(data["sample_rate"]) if "sample_rate" in data.files else 0.0
             window = str(data["window"]) if "window" in data.files else "none"
+            training_rms = float(data["training_rms"]) if "training_rms" in data.files else 0.0
             mode = str(data["mode"]) if "mode" in data.files else "zscore"
             threshold = settings = None
             validation_windows = 0
@@ -275,4 +292,4 @@ def load_baseline(path: Path) -> tuple[Baseline, int]:
     if mode not in ("zscore", "robust"):
         raise BaselineError(f"could not load baseline from {path}: unknown scoring {mode!r}")
     return Baseline(freqs=freqs, mean=mean, std=std, n_windows=n_windows, sample_rate=sample_rate, window=window, mode=mode, threshold=threshold,
-                    settings=settings, validation_windows=validation_windows), model_version
+                    settings=settings, validation_windows=validation_windows, training_rms=training_rms), model_version

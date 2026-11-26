@@ -53,6 +53,10 @@ Calling this again replaces the previous baseline - it is not additive. A drift 
 
 A fraction from 0 to 1 of the level of each frequency bin below which its spread is never taken when a z-score baseline is fitted. `0` (the default) keeps the absolute floor only. With `0.05` a bin is never judged on a spread below 5 % of its own level, which stops a very steady motor from scoring in the hundreds for the smallest change of load. A value outside 0 to 1 is refused at start. It has been tried only on synthetic motors: recalibrate `--threshold` with healthy recordings of the real machine before trusting it.
 
+## No signal (`--no-signal-fraction`, or `"noSignalFraction"` in `--detector-config`, on by default)
+
+A baseline records the median RMS (mean removed) of its healthy training windows. A window whose RMS is below this share of it (`0.05` by default, `0` turns it off, below 1) carries no signal to judge: the answer of `/detect` says `"noSignal": true` and the published verdict is `no_signal` instead of `normal` or `suspect`. A window over the threshold stays `anomalous`. A baseline saved by an earlier version has no recorded RMS and works as before until it is fitted again. Tried on synthetic signals only.
+
 ## The robust scoring (`"scoring": "robust"`, off by default)
 
 Chosen and tuned in the file of `--detector-config`, not on the command line:
@@ -243,8 +247,8 @@ Only `datalake.url` and `series` are required. The DATALAKE tokens come from the
 * **Verdicts for the server** (`publishVerdicts`, off by default; needs `mqtt`): whenever the verdict of a series changes (the first one counts) a *retained*
   `anomaly-verdict/1` message is left at `<topicPrefix>/verdict/<sourceId>/<kind>/<field>`:
   `{"schema": "anomaly-verdict/1", "source_id", "kind", "field", "verdict", "score", "threshold", "model_version", "timestamp"}`. `verdict` is `anomalous`
-  when the window is over the threshold, `suspect` when its score is at `suspectRatio` (0.1 to 1, default 0.8) of the threshold or more, and `normal`
-  otherwise. HYDRA-UMC-SERVER reads these messages, keeps the latest verdict of each series and can tell the voice interface about a change.
+  when the window is over the threshold, `no_signal` when it carries no signal (see above), `suspect` when its score is at `suspectRatio` (0.1 to 1, default 0.8) of the threshold or more, and `normal`
+  otherwise. A series with nothing scored for `staleAfterS` seconds (by default ten window lengths and at least 60 s; `0` never) is left as `stale`, with the last score. HYDRA-UMC-SERVER needs a version that knows `no_signal` and `stale`; an earlier one ignores those messages. HYDRA-UMC-SERVER reads these messages, keeps the latest verdict of each series and can tell the voice interface about a change.
 * **`GET /stats`** gains a `follower` object: passes, windows scored, anomalies, DATALAKE / write / MQTT errors, and per series the last score,
   state and note. A DATALAKE or broker that cannot be reached is counted and tried again at the next pass.
 
