@@ -2,7 +2,7 @@
 
 All notable changes to this project are documented here.
 
-## [Unreleased]
+## [0.2.6] - Retried slow or cut answers and honest no-signal and stale series
 
 - **A slow, reset or cut answer is retried and reported instead of ending the pass:** a timeout or a cut while an answer of the data lake or of the job dispatcher was being read, or an answer that is not JSON, escaped as an unhandled error, so one bad answer skipped every remaining series of that pass or ended the command with a traceback.
 
