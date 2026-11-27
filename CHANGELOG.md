@@ -2,6 +2,10 @@
 
 All notable changes to this project are documented here.
 
+## [Unreleased]
+
+- **Token and password files saved with a byte order mark are read:** a file written by an editor of Windows as "UTF-8 with BOM" kept the mark in front of the secret, so the credential was refused or could not be sent in a header. The mark is dropped now; a file in another encoding (UTF-16) is refused with a clear message. The same holds for the identity key file of the server (shared module of the SDK).
+
 ## [0.2.6] - Retried slow or cut answers and honest no-signal and stale series
 
 - **A slow, reset or cut answer is retried and reported instead of ending the pass:** a timeout or a cut while an answer of the data lake or of the job dispatcher was being read, or an answer that is not JSON, escaped as an unhandled error, so one bad answer skipped every remaining series of that pass or ended the command with a traceback.

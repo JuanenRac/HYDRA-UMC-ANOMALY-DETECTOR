@@ -56,7 +56,7 @@ def _secret(raw: dict, file_key: str, env_names: tuple[str, ...]) -> str | None:
         if not isinstance(path, str) or not path:
             raise FollowConfigError(f"datalake.{file_key} must be the path of a file")
         try:
-            return Path(path).read_text(encoding="utf-8").strip()
+            return Path(path).read_text(encoding="utf-8-sig").strip()
         except (OSError, UnicodeDecodeError) as e:
             raise FollowConfigError(f"cannot read datalake.{file_key}: {e}") from e
     for name in env_names:
@@ -65,7 +65,7 @@ def _secret(raw: dict, file_key: str, env_names: tuple[str, ...]) -> str | None:
         file_name = os.environ.get(name + "_FILE")
         if file_name:
             try:
-                return Path(file_name).read_text(encoding="utf-8").strip()
+                return Path(file_name).read_text(encoding="utf-8-sig").strip()
             except (OSError, UnicodeDecodeError) as e:
                 raise FollowConfigError(f"cannot read the file named by {name}_FILE: {e}") from e
     return None
@@ -192,7 +192,7 @@ def main(argv: list[str] | None = None) -> int:
     token = os.environ.get("HYDRA_UMC_ANOMALY_TOKEN", "")
     if args.token_file:
         try:
-            token = Path(args.token_file).read_text(encoding="utf-8").strip()
+            token = Path(args.token_file).read_text(encoding="utf-8-sig").strip()
         except (OSError, UnicodeDecodeError) as e:
             print(f"error: cannot read --token-file: {e}", file=sys.stderr)
             return 2
