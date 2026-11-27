@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **A slow, reset or cut answer is retried and reported instead of ending the pass:** a timeout or a cut while an answer of the data lake or of the job dispatcher was being read, or an answer that is not JSON, escaped as an unhandled error, so one bad answer skipped every remaining series of that pass or ended the command with a traceback.
+
 - **A silent or vanished series is no longer shown as healthy:** a window with almost no signal (its RMS below `noSignalFraction`, 0.05 by default, of the training windows) is reported as `no_signal` (`/detect` adds `noSignal`), and a followed series with nothing scored for `staleAfterS` seconds (by default ten window lengths, at least 60 s) replaces its retained verdict with `stale`. Both are on by default and can be set to 0. Baselines saved earlier still load and give no `no_signal` until fitted again. The server has to know the two new words. Synthetic signals only.
 
 ## [0.2.5]

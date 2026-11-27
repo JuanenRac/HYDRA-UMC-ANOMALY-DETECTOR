@@ -16,6 +16,7 @@ the first `referenceWindows` scores the follower saw (they are taken as healthy:
 from __future__ import annotations
 
 import ipaddress
+import http.client
 import json
 import math
 import threading
@@ -155,8 +156,8 @@ class MaintenanceProposer:
                 return f"accepted (HTTP {response.status})"
         except urllib.error.HTTPError as error:
             raise OSError(f"the dispatcher answered HTTP {error.code}") from error
-        except urllib.error.URLError as error:
-            raise OSError(f"could not reach the dispatcher: {error.reason}") from error
+        except (urllib.error.URLError, OSError, http.client.HTTPException) as error:
+            raise OSError(f"could not reach the dispatcher: {getattr(error, 'reason', error)}") from error
 
 
 class FleetTracker:
