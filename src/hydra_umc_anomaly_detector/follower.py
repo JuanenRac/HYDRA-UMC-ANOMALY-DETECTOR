@@ -104,7 +104,7 @@ def _read_secret(path: object, label: str) -> str | None:
     if not isinstance(path, str) or not path:
         raise FollowConfigError(f"{label} must be the path of a file")
     try:
-        return Path(path).read_text(encoding="utf-8").strip()
+        return Path(path).read_text(encoding="utf-8-sig").strip()
     except (OSError, UnicodeDecodeError) as error:
         raise FollowConfigError(f"cannot read {label}: {error}") from error
 
