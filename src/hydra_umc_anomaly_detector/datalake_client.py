@@ -19,6 +19,7 @@ Python package directly (separate repos/services on purpose).
 """
 from __future__ import annotations
 
+import http.client
 import json
 import math
 import time
@@ -80,21 +81,27 @@ class DatalakeClient:
     def _get(self, path: str, params: dict[str, str | int]) -> object:
         query = urllib.parse.urlencode(params)
         url = f"{self.base_url}{path}?{query}"
-        last_error: urllib.error.URLError | None = None
+        last_error: Exception | None = None
         for attempt in range(1, self.max_attempts + 1):
             try:
                 request = urllib.request.Request(url, headers={"Authorization": f"Bearer {self.read_token}"} if self.read_token else {})
                 with urllib.request.urlopen(request, timeout=self.timeout_s) as resp:
-                    return json.loads(resp.read())
+                    raw = resp.read()
             except urllib.error.HTTPError as e:
                 body = e.read().decode("utf-8", errors="replace")
                 raise DatalakeError(f"DATALAKE returned HTTP {e.code} for {path}: {body}") from e
-            except urllib.error.URLError as e:
+            except (urllib.error.URLError, OSError, http.client.HTTPException) as e:
+                # A timeout, a reset or a cut while the answer is being read is not wrapped in a URLError, and is just as transient.
                 last_error = e
                 if attempt < self.max_attempts:
                     self._sleep(self.retry_delay_seconds)
+                continue
+            try:
+                return json.loads(raw)
+            except ValueError as e:  # not JSON, or not UTF-8
+                raise DatalakeError(f"DATALAKE answered {path} with a body that is not JSON: {e}") from e
         raise DatalakeError(
-            f"could not reach DATALAKE at {self.base_url} after {self.max_attempts} attempts: {last_error.reason if last_error is not None else ''}"
+            f"could not reach DATALAKE at {self.base_url} after {self.max_attempts} attempts: {getattr(last_error, 'reason', last_error)}"
         ) from last_error
 
     def ingest(self, *, source_id: str, kind: str, timestamp: int, fields: dict[str, float]) -> None:
@@ -110,8 +117,8 @@ class DatalakeClient:
                 resp.read()
         except urllib.error.HTTPError as e:
             raise DatalakeError(f"DATALAKE returned HTTP {e.code} for /ingest: {e.read().decode('utf-8', errors='replace')}") from e
-        except urllib.error.URLError as e:
-            raise DatalakeError(f"could not reach DATALAKE at {self.base_url}: {e.reason}") from e
+        except (urllib.error.URLError, OSError, http.client.HTTPException) as e:
+            raise DatalakeError(f"could not reach DATALAKE at {self.base_url}: {getattr(e, 'reason', e)}") from e
 
     def query(
         self,
